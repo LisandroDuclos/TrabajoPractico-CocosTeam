@@ -26,7 +26,7 @@ public class RedVial {
         idPorNombre.put(nombre, u.getId());
     }
 
-    public Conexion agregarConexion(int origen, int destino, int tiempo) {
+    public void agregarConexion(int origen, int destino, int tiempo) {
         validar(origen);
         validar(destino);
         if (buscarConexion(origen, destino) != null) {
@@ -36,7 +36,6 @@ public class RedVial {
         Conexion c = new Conexion(origen, destino, tiempo);
         adyacencia.get(origen).add(c);
         cantidadConexiones++;
-        return c;
     }
 
     public void agregarConexion(String origen, String destino, int tiempo) {

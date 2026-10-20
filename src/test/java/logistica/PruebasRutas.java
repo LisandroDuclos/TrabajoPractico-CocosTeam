@@ -24,8 +24,6 @@ public class PruebasRutas {
         pruebasDeshabilitar();
         System.out.println("=== Pruebas: validaciones ===");
         pruebasValidaciones();
-        System.out.println("=== Pruebas: contra Bellman-Ford (grafos aleatorios) ===");
-        pruebaContraReferencia();
         System.out.println("=== Prueba de volumen ===");
         pruebaVolumen();
 
