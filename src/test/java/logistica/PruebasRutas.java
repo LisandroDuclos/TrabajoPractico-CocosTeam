@@ -1,0 +1,297 @@
+package logistica;
+
+import java.util.Random;
+
+import logistica.algoritmos.greedy.Dijkstra;
+import logistica.algoritmos.greedy.MinHeap;
+import logistica.modelo.Conexion;
+import logistica.modelo.RedVial;
+import logistica.modelo.Ubicacion;
+import logistica.modelo.Ubicacion.Tipo;
+import logistica.resultado.ResultadoRuta;
+
+public class PruebasRutas {
+
+    private static int ok = 0;
+    private static int fallas = 0;
+
+    public static void main(String[] args) {
+        System.out.println("=== Pruebas: min-heap ===");
+        pruebasHeap();
+        System.out.println("=== Pruebas: ruta más rápida ===");
+        pruebasRutas();
+        System.out.println("=== Pruebas: deshabilitar conexiones ===");
+        pruebasDeshabilitar();
+        System.out.println("=== Pruebas: validaciones ===");
+        pruebasValidaciones();
+        System.out.println("=== Pruebas: contra Bellman-Ford (grafos aleatorios) ===");
+        pruebaContraReferencia();
+        System.out.println("=== Prueba de volumen ===");
+        pruebaVolumen();
+
+        System.out.println();
+        System.out.println("Resultado: " + ok + "/" + (ok + fallas) + " OK");
+        if (fallas > 0) {
+            System.exit(1);
+        }
+    }
+
+    //  Min-heap
+
+    private static void pruebasHeap() {
+        MinHeap heap = new MinHeap(2); // capacidad chica a propósito: fuerza el crecimiento
+        verificar("heap nuevo está vacío", heap.estaVacia());
+        verificar("extraer de un heap vacío lanza excepción", lanza(() -> new MinHeap(4).extraerMin()));
+
+        Random random = new Random(7);
+        int n = 10_000;
+        for (int i = 0; i < n; i++) {
+            heap.insertar(i, random.nextInt(500)); // muchas claves repetidas
+        }
+        verificar("tamaño tras insertar 10.000", heap.tamanio() == n);
+
+        boolean ordenado = true;
+        MinHeap.Entrada anterior = heap.extraerMin();
+        for (int i = 1; i < n; i++) {
+            MinHeap.Entrada actual = heap.extraerMin();
+            boolean bien = anterior.clave < actual.clave
+                    || (anterior.clave == actual.clave && anterior.nodo < actual.nodo);
+            if (!bien) ordenado = false;
+            anterior = actual;
+        }
+        verificar("extrae en orden (clave, nodo) creciente", ordenado);
+        verificar("queda vacío al extraer todo", heap.estaVacia());
+    }
+
+    //  Rutas sobre la red de ejemplo
+
+    /**
+     * C -> N 10, C -> O 15, C -> E 25, N -> E 8, N -> S 30,
+     * O -> S 12, E -> S 5, S -> C 20, S -> P 7.   (P no tiene salidas)
+     */
+    private static RedVial redEjemplo() {
+        RedVial red = new RedVial();
+        red.agregarUbicacion("C", Tipo.DEPOSITO);
+        red.agregarUbicacion("N", Tipo.CENTRO);
+        red.agregarUbicacion("E", Tipo.CENTRO);
+        red.agregarUbicacion("O", Tipo.CENTRO);
+        red.agregarUbicacion("S", Tipo.DEPOSITO);
+        red.agregarUbicacion("P", Tipo.CENTRO);
+        red.agregarConexion("C", "N", 10);
+        red.agregarConexion("C", "O", 15);
+        red.agregarConexion("C", "E", 25);
+        red.agregarConexion("N", "E", 8);
+        red.agregarConexion("N", "S", 30);
+        red.agregarConexion("O", "S", 12);
+        red.agregarConexion("E", "S", 5);
+        red.agregarConexion("S", "C", 20);
+        red.agregarConexion("S", "P", 7);
+        return red;
+    }
+
+    private static void pruebasRutas() {
+        RedVial red = redEjemplo();
+
+        ResultadoRuta r = Dijkstra.calcular(red, "C", "S");
+        verificar("ruta normal C -> S: tiempo 23", r.isExiste() && r.getTiempoTotal() == 23);
+        verificar("ruta normal C -> S: recorrido C-N-E-S", camino(r).equals("C-N-E-S"));
+
+        ResultadoRuta mismo = Dijkstra.calcular(red, "C", "C");
+        verificar("origen = destino: tiempo 0", mismo.isExiste() && mismo.getTiempoTotal() == 0);
+        verificar("origen = destino: recorrido de un solo nodo", camino(mismo).equals("C"));
+
+        ResultadoRuta ida = Dijkstra.calcular(red, "C", "N");
+        ResultadoRuta vuelta = Dijkstra.calcular(red, "N", "C");
+        verificar("sentido: C -> N tarda 10", ida.getTiempoTotal() == 10);
+        verificar("sentido: N -> C debe dar la vuelta (33 min por N-E-S-C)",
+                vuelta.getTiempoTotal() == 33 && camino(vuelta).equals("N-E-S-C"));
+
+        ResultadoRuta sinSalida = Dijkstra.calcular(red, "P", "C");
+        verificar("P no tiene conexiones salientes: no hay ruta a C", !sinSalida.isExiste());
+
+        ResultadoRuta largo = Dijkstra.calcular(red, "C", "P");
+        verificar("ruta C -> P: tiempo 30 por C-N-E-S-P", largo.getTiempoTotal() == 30
+                && camino(largo).equals("C-N-E-S-P"));
+
+        verificar("el cálculo es repetible (misma red, mismo resultado)",
+                Dijkstra.calcular(red, "C", "S").getTiempoTotal() == 23);
+        verificar("la ruta con traza da lo mismo que sin traza",
+                camino(Dijkstra.calcular(red, "C", "S", true)).equals("C-N-E-S"));
+    }
+
+    private static void pruebasDeshabilitar() {
+        RedVial red = redEjemplo();
+
+        verificar("deshabilitar una conexión existente devuelve true", red.deshabilitarConexion("N", "E"));
+        ResultadoRuta desvio = Dijkstra.calcular(red, "C", "S");
+        verificar("tras deshabilitar N -> E: desvío por O, 27 min",
+                desvio.getTiempoTotal() == 27 && camino(desvio).equals("C-O-S"));
+
+        verificar("deshabilitar una conexión inexistente devuelve false", !red.deshabilitarConexion("C", "P"));
+
+        red.habilitarConexion("N", "E");
+        verificar("al volver a habilitar N -> E se recupera la ruta de 23 min",
+                Dijkstra.calcular(red, "C", "S").getTiempoTotal() == 23);
+
+        red.deshabilitarConexion("S", "P");
+        ResultadoRuta sinRuta = Dijkstra.calcular(red, "C", "P");
+        verificar("cortada la única entrada a P: no existe ruta", !sinRuta.isExiste());
+        verificar("sin ruta: no hay recorrido", sinRuta.getCamino() == null);
+        verificar("sin ruta: el mensaje lo informa",
+                sinRuta.toString().startsWith("No existe una ruta disponible"));
+
+        // Se cortan todas las entradas a S: queda aislado.
+        RedVial red2 = redEjemplo();
+        red2.deshabilitarConexion("N", "S");
+        red2.deshabilitarConexion("O", "S");
+        red2.deshabilitarConexion("E", "S");
+        verificar("S aislado: no existe ruta C -> S", !Dijkstra.calcular(red2, "C", "S").isExiste());
+    }
+
+    private static void pruebasValidaciones() {
+        RedVial red = redEjemplo();
+        verificar("ubicación origen inexistente lanza excepción", lanza(() -> Dijkstra.calcular(red, "X", "C")));
+        verificar("ubicación destino inexistente lanza excepción", lanza(() -> Dijkstra.calcular(red, "C", "X")));
+        verificar("conexión con tiempo 0 lanza excepción", lanza(() -> red.agregarConexion("C", "P", 0)));
+        verificar("conexión con tiempo negativo lanza excepción", lanza(() -> red.agregarConexion("C", "P", -5)));
+        verificar("conexión duplicada lanza excepción", lanza(() -> red.agregarConexion("C", "N", 3)));
+        verificar("ubicación duplicada lanza excepción", lanza(() -> red.agregarUbicacion("C", Tipo.CENTRO)));
+    }
+
+    //  Contraste contra una implementación de referencia
+
+    private static void pruebaContraReferencia() {
+        Random random = new Random(2026);
+        int casos = 2000;
+        int coinciden = 0;
+        int rutasValidas = 0;
+        int consultas = 0;
+
+        for (int t = 0; t < casos; t++) {
+            int n = 2 + random.nextInt(25);
+            RedVial red = new RedVial();
+            for (int i = 0; i < n; i++) red.agregarUbicacion("N" + i, Tipo.CENTRO);
+
+            int intentos = random.nextInt(n * 3 + 1);
+            for (int k = 0; k < intentos; k++) {
+                int a = random.nextInt(n);
+                int b = random.nextInt(n);
+                if (a == b) continue;
+                try {
+                    Conexion c = red.agregarConexion(a, b, 1 + random.nextInt(20));
+                    if (random.nextInt(5) == 0) c.setHabilitada(false);
+                } catch (IllegalArgumentException duplicada) {
+                    // conexión repetida: se ignora
+                }
+            }
+
+            int origen = random.nextInt(n);
+            long[] esperado = bellmanFord(red, origen);
+            for (int destino = 0; destino < n; destino++) {
+                consultas++;
+                ResultadoRuta r = Dijkstra.calcular(red, origen, destino, false);
+                boolean mismoResultado = (esperado[destino] == Long.MAX_VALUE)
+                        ? !r.isExiste()
+                        : r.isExiste() && r.getTiempoTotal() == esperado[destino];
+                if (mismoResultado) coinciden++;
+                if (!r.isExiste() || sumaCamino(red, r.getCamino()) == r.getTiempoTotal()) rutasValidas++;
+            }
+        }
+        verificar(consultas + " consultas coinciden con Bellman-Ford", coinciden == consultas);
+        verificar("todos los recorridos son transitables y suman el tiempo informado", rutasValidas == consultas);
+    }
+
+    private static long[] bellmanFord(RedVial red, int origen) {
+        int n = red.cantidadUbicaciones();
+        long[] d = new long[n];
+        for (int i = 0; i < n; i++) d[i] = Long.MAX_VALUE;
+        d[origen] = 0;
+        for (int pasada = 0; pasada < n - 1; pasada++) {
+            for (int u = 0; u < n; u++) {
+                if (d[u] == Long.MAX_VALUE) continue;
+                for (Conexion c : red.getConexionesSalientes(u)) {
+                    if (c.isHabilitada() && d[u] + c.getTiempo() < d[c.getDestino()]) {
+                        d[c.getDestino()] = d[u] + c.getTiempo();
+                    }
+                }
+            }
+        }
+        return d;
+    }
+
+    // Volumen
+
+    private static void pruebaVolumen() {
+        int n = 100_000;
+        Random random = new Random(42);
+        RedVial red = new RedVial();
+        for (int i = 0; i < n; i++) red.agregarUbicacion("N" + i, Tipo.CENTRO);
+        for (int i = 0; i < n; i++) {
+            if (i + 1 < n) red.agregarConexion(i, i + 1, 1 + random.nextInt(20)); // asegura conectividad
+            for (int k = 0; k < 3; k++) {
+                int destino = random.nextInt(n);
+                if (destino == i) continue;
+                try {
+                    red.agregarConexion(i, destino, 1 + random.nextInt(200));
+                } catch (IllegalArgumentException duplicada) {
+                    // conexión repetida: se ignora
+                }
+            }
+        }
+
+        long inicio = System.nanoTime();
+        ResultadoRuta r = Dijkstra.calcular(red, 0, n - 1, false);
+        long ms = (System.nanoTime() - inicio) / 1_000_000;
+
+        verificar("100.000 ubicaciones: existe ruta de 0 a n-1", r.isExiste());
+        verificar("100.000 ubicaciones: el recorrido es transitable y suma el tiempo informado",
+                r.isExiste() && sumaCamino(red, r.getCamino()) == r.getTiempoTotal());
+        System.out.println("    V = " + n + ", E = " + red.cantidadConexiones() + ", tiempo = " + ms + " ms, "
+                + "nodos fijados = " + r.getNodosFijados() + ", relajaciones = " + r.getRelajaciones());
+    }
+
+    // Auxiliares
+
+    private static String camino(ResultadoRuta r) {
+        if (!r.isExiste()) return "(sin ruta)";
+        StringBuilder sb = new StringBuilder();
+        Ubicacion[] c = r.getCamino();
+        for (int i = 0; i < c.length; i++) {
+            if (i > 0) sb.append("-");
+            sb.append(c[i].getNombre());
+        }
+        return sb.toString();
+    }
+
+    private static long sumaCamino(RedVial red, Ubicacion[] camino) {   // Suma los tiempos del recorrido; devuelve -1 si algún tramo no existe o está deshabilitado
+        long suma = 0;
+        for (int i = 0; i + 1 < camino.length; i++) {
+            Conexion encontrada = null;
+            for (Conexion c : red.getConexionesSalientes(camino[i].getId())) {
+                if (c.getDestino() == camino[i + 1].getId()) encontrada = c;
+            }
+            if (encontrada == null || !encontrada.isHabilitada()) return -1;
+            suma += encontrada.getTiempo();
+        }
+        return suma;
+    }
+
+    private static boolean lanza(Runnable accion) {
+        try {
+            accion.run();
+            return false;
+        } catch (RuntimeException e) {
+            return true;
+        }
+    }
+
+    private static void verificar(String nombre, boolean condicion) {
+        if (condicion) {
+            ok++;
+            System.out.println("  [OK]    " + nombre);
+        } else {
+            fallas++;
+            System.out.println("  [FALLA] " + nombre);
+        }
+    }
+}
