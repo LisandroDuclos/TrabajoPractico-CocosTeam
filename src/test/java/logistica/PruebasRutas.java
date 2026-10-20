@@ -7,7 +7,6 @@ import logistica.algoritmos.greedy.MinHeap;
 import logistica.modelo.Conexion;
 import logistica.modelo.RedVial;
 import logistica.modelo.Ubicacion;
-import logistica.modelo.Ubicacion.Tipo;
 import logistica.resultado.ResultadoRuta;
 
 public class PruebasRutas {
@@ -69,12 +68,12 @@ public class PruebasRutas {
      */
     private static RedVial redEjemplo() {
         RedVial red = new RedVial();
-        red.agregarUbicacion("C", Tipo.DEPOSITO);
-        red.agregarUbicacion("N", Tipo.CENTRO);
-        red.agregarUbicacion("E", Tipo.CENTRO);
-        red.agregarUbicacion("O", Tipo.CENTRO);
-        red.agregarUbicacion("S", Tipo.DEPOSITO);
-        red.agregarUbicacion("P", Tipo.CENTRO);
+        red.agregarUbicacion("C");
+        red.agregarUbicacion("N");
+        red.agregarUbicacion("E");
+        red.agregarUbicacion("O");
+        red.agregarUbicacion("S");
+        red.agregarUbicacion("P");
         red.agregarConexion("C", "N", 10);
         red.agregarConexion("C", "O", 15);
         red.agregarConexion("C", "E", 25);
@@ -153,7 +152,7 @@ public class PruebasRutas {
         verificar("conexión con tiempo 0 lanza excepción", lanza(() -> red.agregarConexion("C", "P", 0)));
         verificar("conexión con tiempo negativo lanza excepción", lanza(() -> red.agregarConexion("C", "P", -5)));
         verificar("conexión duplicada lanza excepción", lanza(() -> red.agregarConexion("C", "N", 3)));
-        verificar("ubicación duplicada lanza excepción", lanza(() -> red.agregarUbicacion("C", Tipo.CENTRO)));
+        verificar("ubicación duplicada lanza excepción", lanza(() -> red.agregarUbicacion("C")));
     }
 
     // Volumen
@@ -162,7 +161,7 @@ public class PruebasRutas {
         int n = 100_000;
         Random random = new Random(42);
         RedVial red = new RedVial();
-        for (int i = 0; i < n; i++) red.agregarUbicacion("N" + i, Tipo.CENTRO);
+        for (int i = 0; i < n; i++) red.agregarUbicacion("N" + i);
         for (int i = 0; i < n; i++) {
             if (i + 1 < n) red.agregarConexion(i, i + 1, 1 + random.nextInt(20)); // asegura conectividad
             for (int k = 0; k < 3; k++) {

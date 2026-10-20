@@ -5,7 +5,6 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import logistica.modelo.Ubicacion.Tipo;
 
 public class RedVial {
 
@@ -16,7 +15,7 @@ public class RedVial {
 
     // Construcción de la red
 
-    public void agregarUbicacion(String nombre, Tipo tipo) {
+    public void agregarUbicacion(String nombre) {
         if (idPorNombre.containsKey(nombre)) {
             throw new IllegalArgumentException("Ya existe la ubicación: " + nombre);
         }

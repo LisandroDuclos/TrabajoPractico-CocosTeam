@@ -8,7 +8,6 @@ import logistica.algoritmos.greedy.Dijkstra;
 import logistica.modelo.Pedido;
 import logistica.modelo.Pedido.Criterio;
 import logistica.modelo.RedVial;
-import logistica.modelo.Ubicacion.Tipo;
 import logistica.resultado.ResultadoOrdenamiento;
 
 public class Main {
@@ -96,12 +95,12 @@ public class Main {
      */
     private static RedVial crearRedDeEjemplo() {
         RedVial red = new RedVial();
-        red.agregarUbicacion("Depósito Central", Tipo.DEPOSITO);
-        red.agregarUbicacion("Depósito Sur", Tipo.DEPOSITO);
-        red.agregarUbicacion("Centro Norte", Tipo.CENTRO);
-        red.agregarUbicacion("Centro Este", Tipo.CENTRO);
-        red.agregarUbicacion("Centro Oeste", Tipo.CENTRO);
-        red.agregarUbicacion("Centro Puerto", Tipo.CENTRO);
+        red.agregarUbicacion("Depósito Central");
+        red.agregarUbicacion("Depósito Sur");
+        red.agregarUbicacion("Centro Norte");
+        red.agregarUbicacion("Centro Este");
+        red.agregarUbicacion("Centro Oeste");
+        red.agregarUbicacion("Centro Puerto");
 
         red.agregarConexion("Depósito Central", "Centro Norte", 10);
         red.agregarConexion("Depósito Central", "Centro Oeste", 15);
