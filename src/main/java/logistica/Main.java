@@ -12,7 +12,7 @@ import logistica.resultado.ResultadoOrdenamiento;
 
 public class Main {
 
-    static void main() {
+    public static void main(String[] args) {
         demoPedidos();
         demoRutas();
     }

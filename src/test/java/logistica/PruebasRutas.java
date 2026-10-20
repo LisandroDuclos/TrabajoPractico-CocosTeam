@@ -14,7 +14,7 @@ public class PruebasRutas {
     private static int ok = 0;
     private static int fallas = 0;
 
-    static void main() {
+    public static void main(String[] args) {
         System.out.println("=== Pruebas: min-heap ===");
         pruebasHeap();
         System.out.println("=== Pruebas: ruta más rápida ===");

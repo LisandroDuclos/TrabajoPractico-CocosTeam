@@ -42,12 +42,12 @@ public class RedVial {
     }
 
     // Deshabilitar / habilitar conexiones
-    public boolean deshabilitarConexion(String origen, String destino) { // true si existe la conexion y quedó dehabilitada
+    public boolean deshabilitarConexion(String origen, String destino) { // true si existe la conexion y quedó deshabilitada
         return cambiarEstado(getId(origen), getId(destino), false);
     }
 
-    public void habilitarConexion(String origen, String destino) {   // true si existe la conexion y quedó habilitada
-        cambiarEstado(getId(origen), getId(destino), true);
+    public boolean habilitarConexion(String origen, String destino) {   // true si existe la conexion y quedó habilitada
+        return cambiarEstado(getId(origen), getId(destino), true);
     }
 
     private boolean cambiarEstado(int origen, int destino, boolean habilitada) {

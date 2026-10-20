@@ -57,7 +57,8 @@ public class Dijkstra {
 
             for (Conexion c : red.getConexionesSalientes(u)) {
                 int v = c.getDestino();
-                String arista = red.getUbicacion(u) + " -> " + red.getUbicacion(v);
+                // El texto sólo se arma si hay traza, para no gastar tiempo en el cálculo normal.
+                String arista = conTraza ? red.getUbicacion(u) + " -> " + red.getUbicacion(v) : null;
 
                 if (!c.isHabilitada()) {
                     traza(conTraza, "  " + arista + ": deshabilitada, se ignora");
