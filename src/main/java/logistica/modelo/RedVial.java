@@ -20,7 +20,7 @@ public class RedVial {
         if (idPorNombre.containsKey(nombre)) {
             throw new IllegalArgumentException("Ya existe la ubicación: " + nombre);
         }
-        Ubicacion u = new Ubicacion(ubicaciones.size(), nombre, tipo);
+        Ubicacion u = new Ubicacion(ubicaciones.size(), nombre);
         ubicaciones.add(u);
         adyacencia.add(new ArrayList<>());
         idPorNombre.put(nombre, u.getId());
