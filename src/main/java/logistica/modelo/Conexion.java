@@ -16,10 +16,6 @@ public class Conexion {
         this.tiempo = tiempo;
     }
 
-    public int getOrigen() {
-        return origen;
-    }
-
     public int getDestino() {
         return destino;
     }

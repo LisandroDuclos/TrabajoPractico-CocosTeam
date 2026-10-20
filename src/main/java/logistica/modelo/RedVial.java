@@ -16,7 +16,7 @@ public class RedVial {
 
     // Construcción de la red
 
-    public Ubicacion agregarUbicacion(String nombre, Tipo tipo) {
+    public void agregarUbicacion(String nombre, Tipo tipo) {
         if (idPorNombre.containsKey(nombre)) {
             throw new IllegalArgumentException("Ya existe la ubicación: " + nombre);
         }
@@ -24,7 +24,6 @@ public class RedVial {
         ubicaciones.add(u);
         adyacencia.add(new ArrayList<>());
         idPorNombre.put(nombre, u.getId());
-        return u;
     }
 
     public Conexion agregarConexion(int origen, int destino, int tiempo) {
@@ -40,8 +39,8 @@ public class RedVial {
         return c;
     }
 
-    public Conexion agregarConexion(String origen, String destino, int tiempo) {
-        return agregarConexion(getId(origen), getId(destino), tiempo);
+    public void agregarConexion(String origen, String destino, int tiempo) {
+        agregarConexion(getId(origen), getId(destino), tiempo);
     }
 
     // Deshabilitar / habilitar conexiones
@@ -49,8 +48,8 @@ public class RedVial {
         return cambiarEstado(getId(origen), getId(destino), false);
     }
 
-    public boolean habilitarConexion(String origen, String destino) {   // true si existe la conexion y quedó habilitada
-        return cambiarEstado(getId(origen), getId(destino), true);
+    public void habilitarConexion(String origen, String destino) {   // true si existe la conexion y quedó habilitada
+        cambiarEstado(getId(origen), getId(destino), true);
     }
 
     private boolean cambiarEstado(int origen, int destino, boolean habilitada) {

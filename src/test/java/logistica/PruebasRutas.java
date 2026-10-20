@@ -15,7 +15,7 @@ public class PruebasRutas {
     private static int ok = 0;
     private static int fallas = 0;
 
-    public static void main(String[] args) {
+    static void main() {
         System.out.println("=== Pruebas: min-heap ===");
         pruebasHeap();
         System.out.println("=== Pruebas: ruta más rápida ===");
@@ -156,67 +156,6 @@ public class PruebasRutas {
         verificar("conexión con tiempo negativo lanza excepción", lanza(() -> red.agregarConexion("C", "P", -5)));
         verificar("conexión duplicada lanza excepción", lanza(() -> red.agregarConexion("C", "N", 3)));
         verificar("ubicación duplicada lanza excepción", lanza(() -> red.agregarUbicacion("C", Tipo.CENTRO)));
-    }
-
-    //  Contraste contra una implementación de referencia
-
-    private static void pruebaContraReferencia() {
-        Random random = new Random(2026);
-        int casos = 2000;
-        int coinciden = 0;
-        int rutasValidas = 0;
-        int consultas = 0;
-
-        for (int t = 0; t < casos; t++) {
-            int n = 2 + random.nextInt(25);
-            RedVial red = new RedVial();
-            for (int i = 0; i < n; i++) red.agregarUbicacion("N" + i, Tipo.CENTRO);
-
-            int intentos = random.nextInt(n * 3 + 1);
-            for (int k = 0; k < intentos; k++) {
-                int a = random.nextInt(n);
-                int b = random.nextInt(n);
-                if (a == b) continue;
-                try {
-                    Conexion c = red.agregarConexion(a, b, 1 + random.nextInt(20));
-                    if (random.nextInt(5) == 0) c.setHabilitada(false);
-                } catch (IllegalArgumentException duplicada) {
-                    // conexión repetida: se ignora
-                }
-            }
-
-            int origen = random.nextInt(n);
-            long[] esperado = bellmanFord(red, origen);
-            for (int destino = 0; destino < n; destino++) {
-                consultas++;
-                ResultadoRuta r = Dijkstra.calcular(red, origen, destino, false);
-                boolean mismoResultado = (esperado[destino] == Long.MAX_VALUE)
-                        ? !r.isExiste()
-                        : r.isExiste() && r.getTiempoTotal() == esperado[destino];
-                if (mismoResultado) coinciden++;
-                if (!r.isExiste() || sumaCamino(red, r.getCamino()) == r.getTiempoTotal()) rutasValidas++;
-            }
-        }
-        verificar(consultas + " consultas coinciden con Bellman-Ford", coinciden == consultas);
-        verificar("todos los recorridos son transitables y suman el tiempo informado", rutasValidas == consultas);
-    }
-
-    private static long[] bellmanFord(RedVial red, int origen) {
-        int n = red.cantidadUbicaciones();
-        long[] d = new long[n];
-        for (int i = 0; i < n; i++) d[i] = Long.MAX_VALUE;
-        d[origen] = 0;
-        for (int pasada = 0; pasada < n - 1; pasada++) {
-            for (int u = 0; u < n; u++) {
-                if (d[u] == Long.MAX_VALUE) continue;
-                for (Conexion c : red.getConexionesSalientes(u)) {
-                    if (c.isHabilitada() && d[u] + c.getTiempo() < d[c.getDestino()]) {
-                        d[c.getDestino()] = d[u] + c.getTiempo();
-                    }
-                }
-            }
-        }
-        return d;
     }
 
     // Volumen

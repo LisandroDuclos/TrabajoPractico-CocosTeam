@@ -16,7 +16,6 @@ public class Ubicacion {
 
     public int getId() { return id; }
     public String getNombre() { return nombre; }
-    public Tipo getTipo() { return tipo; }
 
     @Override
     public String toString() {
