@@ -2,8 +2,6 @@ package logistica.modelo;
 
 public class Ubicacion {
 
-    public enum Tipo { DEPOSITO, CENTRO }
-
     private final int id;
     private final String nombre;
 
