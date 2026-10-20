@@ -6,10 +6,12 @@ public class Ubicacion {
 
     private final int id;
     private final String nombre;
+    private final Tipo tipo;
 
     public Ubicacion(int id, String nombre, Tipo tipo) {
         this.id = id;
         this.nombre = nombre;
+        this.tipo = tipo;
     }
 
     public int getId() { return id; }

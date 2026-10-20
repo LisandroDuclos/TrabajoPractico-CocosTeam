@@ -33,7 +33,7 @@ public class RedVial {
             throw new IllegalArgumentException("Ya existe la conexión "
                     + ubicaciones.get(origen) + " -> " + ubicaciones.get(destino));
         }
-        Conexion c = new Conexion(origen, destino, tiempo);
+        Conexion c = new Conexion(destino, tiempo);
         adyacencia.get(origen).add(c);
         cantidadConexiones++;
     }

@@ -6,7 +6,7 @@ public class Conexion {
     private final int tiempo;
     private boolean habilitada = true;
 
-    public Conexion(int origen, int destino, int tiempo) {
+    public Conexion(int destino, int tiempo) {
         if (tiempo <= 0) {
             throw new IllegalArgumentException("El tiempo de viaje debe ser positivo: " + tiempo);
         }
