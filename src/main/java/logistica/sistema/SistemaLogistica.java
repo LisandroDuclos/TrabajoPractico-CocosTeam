@@ -3,10 +3,15 @@ package logistica.sistema;
 import java.util.ArrayList;
 import java.util.List;
 
+import logistica.algoritmos.dyc.BusquedaBinaria;
+import logistica.algoritmos.dyc.MergeSort;
 import logistica.modelo.Lote;
 import logistica.modelo.Pedido;
+import logistica.modelo.Pedido.Criterio;
 import logistica.modelo.RedVial;
 import logistica.modelo.Vehiculo;
+import logistica.resultado.ResultadoBusqueda;
+import logistica.resultado.ResultadoOrdenamiento;
 
 /**
  * Fachada que reúne los datos de la organización y los mantiene consistentes:
@@ -65,6 +70,43 @@ public class SistemaLogistica {
             throw new IllegalArgumentException("Ya existe el vehículo V" + vehiculo.getId());
         }
         vehiculos.add(vehiculo);
+    }
+
+    // Funcionalidad 1: organización y consulta de pedidos (Divide y Conquista)
+
+    public ResultadoOrdenamiento pedidosPorFecha() {
+        return pedidosPorFecha(false);
+    }
+
+    public ResultadoOrdenamiento pedidosPorFecha(boolean conTraza) {
+        return MergeSort.ordenar(getPedidosPendientes(), Criterio.FECHA, conTraza);
+    }
+
+    public ResultadoOrdenamiento pedidosPorPrioridad() {
+        return pedidosPorPrioridad(false);
+    }
+
+    public ResultadoOrdenamiento pedidosPorPrioridad(boolean conTraza) {
+        return MergeSort.ordenar(getPedidosPendientes(), Criterio.PRIORIDAD, conTraza);
+    }
+
+    public ResultadoBusqueda buscarPedido(int id) {
+        return buscarPedido(id, false);
+    }
+
+    public ResultadoBusqueda buscarPedido(int id, boolean conTraza) {
+        // La búsqueda binaria necesita los pedidos ordenados por id.
+        Pedido[] porId = MergeSort.ordenar(getPedidosPendientes(), Criterio.ID).getPedidos();
+        return BusquedaBinaria.buscarPorId(porId, id, conTraza);
+    }
+
+    /**
+     * El pedido que encabeza el orden por prioridad: mayor prioridad y, ante empates,
+     * fecha límite más cercana y luego id menor. Devuelve null si no hay pendientes.
+     */
+    public Pedido pedidoMasUrgente() {
+        Pedido[] ordenados = pedidosPorPrioridad().getPedidos();
+        return ordenados.length == 0 ? null : ordenados[0];
     }
 
     // Consultas
