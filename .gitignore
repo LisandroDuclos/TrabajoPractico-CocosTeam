@@ -2,6 +2,6 @@ out/
 .idea/
 *.iml
 
-# Material de clase: no se versiona
-Docs/
-docs/
+# Material de clase (PDF): no se versiona. Los documentos del equipo (.md) en docs/ sí.
+docs/**/*.pdf
+Docs/**/*.pdf
