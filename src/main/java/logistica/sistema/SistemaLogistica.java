@@ -162,6 +162,7 @@ public class SistemaLogistica {
      *   3. F2 calcula la ruta más rápida desde el depósito del vehículo hasta el destino.
      * Si los tres pasos salen bien, el pedido deja de estar pendiente y los lotes cargados
      * salen del stock. Si alguno falla, no se modifica nada y se informa el motivo.
+     * La traza muestra sólo las decisiones del cálculo de la ruta (F2).
      */
     public ResultadoViaje planificarViaje(int idVehiculo, boolean conTraza) {
         Vehiculo vehiculo = getVehiculo(idVehiculo);
@@ -171,7 +172,7 @@ public class SistemaLogistica {
             return ResultadoViaje.noDespachado(vehiculo, null, null, null, "No hay pedidos pendientes");
         }
 
-        ResultadoCarga carga = armarCarga(idVehiculo, conTraza);
+        ResultadoCarga carga = armarCarga(idVehiculo);
         if (carga.isVacia()) {
             return ResultadoViaje.noDespachado(vehiculo, pedido, carga, null,
                     "Ningún lote del stock entra en el vehículo");

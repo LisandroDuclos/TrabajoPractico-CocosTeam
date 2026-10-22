@@ -58,6 +58,7 @@ public class ResultadoViaje {
         if (!isDespachado()) {
             sb.append("Motivo: ").append(motivo).append("\n");
         }
+        sb.setLength(sb.length() - 1); // sin el último salto de línea, como los otros resultados
         return sb.toString();
     }
 }
