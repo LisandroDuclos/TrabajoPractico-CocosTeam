@@ -1,3 +1,7 @@
 out/
 .idea/
 *.iml
+
+# Material de clase: no se versiona
+Docs/
+docs/

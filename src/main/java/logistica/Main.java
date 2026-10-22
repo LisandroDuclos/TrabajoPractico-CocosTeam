@@ -2,9 +2,11 @@ package logistica;
 
 import java.time.LocalDate;
 
+import logistica.algoritmos.dinamica.SeleccionCargas;
 import logistica.algoritmos.dyc.BusquedaBinaria;
 import logistica.algoritmos.dyc.MergeSort;
 import logistica.algoritmos.greedy.Dijkstra;
+import logistica.modelo.Lote;
 import logistica.modelo.Pedido;
 import logistica.modelo.Pedido.Criterio;
 import logistica.modelo.RedVial;
@@ -15,6 +17,7 @@ public class Main {
     public static void main(String[] args) {
         demoPedidos();
         demoRutas();
+        demoCargas();
     }
 
     // ---- Funcionalidad 1: organización y consulta de pedidos (Divide y Conquista) ----
@@ -112,6 +115,43 @@ public class Main {
         red.agregarConexion("Depósito Sur", "Depósito Central", 20);
         red.agregarConexion("Depósito Sur", "Centro Puerto", 7);
         return red;
+    }
+
+    //  Funcionalidad 3: selección de cargas prioritarias usando Programación Dinámica (mochila 0/1)
+
+    private static void demoCargas() {
+        titulo("FUNCIONALIDAD 3 - Selección de cargas prioritarias");
+
+        // 1) Caso normal, mostrando las decisiones de la reconstrucción.
+        subtitulo("1) Vehículo de 30 kg con 6 lotes disponibles");
+        Lote[] lotes = {
+                new Lote(201,  8, 40),
+                new Lote(202, 12, 55),
+                new Lote(203,  5, 20),
+                new Lote(204, 15, 70),
+                new Lote(205, 10, 45),
+                new Lote(206,  6, 30),
+        };
+        for (Lote lote : lotes) {
+            System.out.println("  " + lote);
+        }
+        System.out.println("Reconstrucción:");
+        System.out.println(SeleccionCargas.seleccionar(lotes, 30, true));
+
+        // 2) Greedy por prioridad/peso toma 301 (6/kg) y 302 (5/kg): 30 kg y prioridad 160,
+        //    y el 303 ya no entra. La PD encuentra 302 + 303 con prioridad 220.
+        subtitulo("2) Caso donde Greedy por prioridad/peso no da el óptimo (capacidad 50 kg)");
+        Lote[] contraejemplo = {
+                new Lote(301, 10, 60),
+                new Lote(302, 20, 100),
+                new Lote(303, 30, 120),
+        };
+        System.out.println("  Greedy por prioridad/peso: #301 + #302 -> 30 kg, prioridad 160");
+        System.out.println(SeleccionCargas.seleccionar(contraejemplo, 50, true));
+
+        // 3) Ningún lote entra en el vehículo.
+        subtitulo("3) Vehículo de 4 kg: ningún lote entra (el más liviano pesa 5 kg)");
+        System.out.println(SeleccionCargas.seleccionar(lotes, 4, true));
     }
 
     private static void titulo(String texto) {
