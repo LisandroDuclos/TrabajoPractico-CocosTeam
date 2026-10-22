@@ -44,7 +44,7 @@ public class SeleccionCargas {
             return new ResultadoCarga(new Lote[0], capacidad, 0, 0, celdas);
         }
 
-        // Reconstrucción top down: desde M[n-1][capacidad] hacia la primera fila.
+        // Reconstrucción: desde M[n-1][capacidad] hacia la primera fila.
         // Si el valor cambia respecto de la fila de arriba, el lote i fue parte de la solución.
         boolean[] incluido = new boolean[n];
         int cantidad = 0;
