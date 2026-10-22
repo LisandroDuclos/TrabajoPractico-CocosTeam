@@ -5,8 +5,10 @@ import java.time.LocalDate;
 import logistica.modelo.Lote;
 import logistica.modelo.Pedido;
 import logistica.modelo.RedVial;
+import logistica.modelo.Ubicacion;
 import logistica.modelo.Vehiculo;
 import logistica.resultado.ResultadoBusqueda;
+import logistica.resultado.ResultadoRuta;
 import logistica.sistema.SistemaLogistica;
 
 /**
@@ -24,6 +26,8 @@ public class PruebasSistema {
         pruebasCargaDeDatos();
         System.out.println("=== Pruebas: F1 desde el sistema ===");
         pruebasPedidos();
+        System.out.println("=== Pruebas: F2 desde el sistema ===");
+        pruebasRutas();
 
         System.out.println();
         System.out.println("Resultado: " + ok + "/" + (ok + fallas) + " OK");
@@ -112,6 +116,50 @@ public class PruebasSistema {
         verificar("ordenar no altera los pendientes", ids(s.getPedidosPendientes(), 1, 2, 3, 4));
     }
 
+    //  F2 desde la fachada
+
+    private static void pruebasRutas() {
+        SistemaLogistica s = new SistemaLogistica(redChica());
+
+        ResultadoRuta normal = s.rutaMasRapida("Depósito Central", "Centro Este");
+        verificar("pasa por Centro Norte (18 min) y no por la directa (25 min)", normal.isExiste()
+                && normal.getTiempoTotal() == 18
+                && camino(normal, "Depósito Central", "Centro Norte", "Centro Este"));
+
+        verificar("deshabilitar una conexión existente", s.deshabilitarConexion("Centro Norte", "Centro Este"));
+        ResultadoRuta desvio = s.rutaMasRapida("Depósito Central", "Centro Este");
+        verificar("recalcula por la directa (25 min)", desvio.isExiste() && desvio.getTiempoTotal() == 25
+                && camino(desvio, "Depósito Central", "Centro Este"));
+
+        s.deshabilitarConexion("Depósito Central", "Centro Este");
+        verificar("sin conexiones habilitadas no hay ruta",
+                !s.rutaMasRapida("Depósito Central", "Centro Este").isExiste());
+
+        verificar("habilitar una conexión existente", s.habilitarConexion("Centro Norte", "Centro Este"));
+        verificar("vuelve a la ruta de 18 min", s.rutaMasRapida("Depósito Central", "Centro Este").getTiempoTotal() == 18);
+
+        verificar("conexión inexistente: no se deshabilita", !s.deshabilitarConexion("Centro Este", "Centro Norte"));
+        verificar("ruta hacia una ubicación inexistente lanza excepción", rutaLanza(s, "Depósito Central", "Centro Sur"));
+    }
+
+    private static boolean camino(ResultadoRuta ruta, String... esperados) {
+        Ubicacion[] camino = ruta.getCamino();
+        if (camino.length != esperados.length) return false;
+        for (int i = 0; i < camino.length; i++) {
+            if (!camino[i].getNombre().equals(esperados[i])) return false;
+        }
+        return true;
+    }
+
+    private static boolean rutaLanza(SistemaLogistica s, String origen, String destino) {
+        try {
+            s.rutaMasRapida(origen, destino);
+            return false;
+        } catch (IllegalArgumentException e) {
+            return true;
+        }
+    }
+
     private static boolean ids(Pedido[] pedidos, int... esperados) {
         if (pedidos.length != esperados.length) return false;
         for (int i = 0; i < pedidos.length; i++) {
@@ -127,6 +175,7 @@ public class PruebasSistema {
         red.agregarUbicacion("Centro Este");
         red.agregarConexion("Depósito Central", "Centro Norte", 10);
         red.agregarConexion("Centro Norte", "Centro Este", 8);
+        red.agregarConexion("Depósito Central", "Centro Este", 25);
         return red;
     }
 

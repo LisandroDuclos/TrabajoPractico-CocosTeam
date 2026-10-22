@@ -5,6 +5,7 @@ import java.util.List;
 
 import logistica.algoritmos.dyc.BusquedaBinaria;
 import logistica.algoritmos.dyc.MergeSort;
+import logistica.algoritmos.greedy.Dijkstra;
 import logistica.modelo.Lote;
 import logistica.modelo.Pedido;
 import logistica.modelo.Pedido.Criterio;
@@ -12,6 +13,7 @@ import logistica.modelo.RedVial;
 import logistica.modelo.Vehiculo;
 import logistica.resultado.ResultadoBusqueda;
 import logistica.resultado.ResultadoOrdenamiento;
+import logistica.resultado.ResultadoRuta;
 
 /**
  * Fachada que reúne los datos de la organización y los mantiene consistentes:
@@ -107,6 +109,26 @@ public class SistemaLogistica {
     public Pedido pedidoMasUrgente() {
         Pedido[] ordenados = pedidosPorPrioridad().getPedidos();
         return ordenados.length == 0 ? null : ordenados[0];
+    }
+
+    // Funcionalidad 2: ruta más rápida (Greedy - Dijkstra)
+
+    public ResultadoRuta rutaMasRapida(String origen, String destino) {
+        return rutaMasRapida(origen, destino, false);
+    }
+
+    public ResultadoRuta rutaMasRapida(String origen, String destino, boolean conTraza) {
+        return Dijkstra.calcular(red, origen, destino, conTraza);
+    }
+
+    /** Devuelve true si la conexión existe y quedó deshabilitada. */
+    public boolean deshabilitarConexion(String origen, String destino) {
+        return red.deshabilitarConexion(origen, destino);
+    }
+
+    /** Devuelve true si la conexión existe y quedó habilitada. */
+    public boolean habilitarConexion(String origen, String destino) {
+        return red.habilitarConexion(origen, destino);
     }
 
     // Consultas
