@@ -10,6 +10,7 @@ import logistica.modelo.Vehiculo;
 import logistica.resultado.ResultadoBusqueda;
 import logistica.resultado.ResultadoCarga;
 import logistica.resultado.ResultadoRuta;
+import logistica.resultado.ResultadoViaje;
 import logistica.sistema.SistemaLogistica;
 
 /**
@@ -31,6 +32,10 @@ public class PruebasSistema {
         pruebasRutas();
         System.out.println("=== Pruebas: F3 desde el sistema ===");
         pruebasCargas();
+        System.out.println("=== Pruebas: viaje integrado F1 -> F3 -> F2 ===");
+        pruebasViaje();
+        System.out.println("=== Pruebas: viajes que no se despachan ===");
+        pruebasViajeNoDespachado();
 
         System.out.println();
         System.out.println("Resultado: " + ok + "/" + (ok + fallas) + " OK");
@@ -174,6 +179,94 @@ public class PruebasSistema {
     private static boolean armarCargaLanza(SistemaLogistica s, int idVehiculo) {
         try {
             s.armarCarga(idVehiculo);
+            return false;
+        } catch (IllegalArgumentException e) {
+            return true;
+        }
+    }
+
+    //  Viaje integrado
+
+    private static void pruebasViaje() {
+        SistemaLogistica s = sistemaConDatos();
+
+        // Viaje 1: 104 y 107 empatan en prioridad 5, gana 104 por fecha -> Centro Este.
+        ResultadoViaje v1 = s.planificarViaje(1);
+        verificar("viaje 1: se despacha", v1.isDespachado());
+        verificar("viaje 1: atiende el pedido más urgente (#104)", v1.getPedido().getId() == 104);
+        verificar("viaje 1: carga 201 + 202 + 205 con prioridad 140",
+                ids(v1.getCarga().getSeleccion(), 201, 202, 205) && v1.getCarga().getPrioridadTotal() == 140);
+        verificar("viaje 1: ruta Central -> Norte -> Este en 18 min", v1.getRuta().getTiempoTotal() == 18
+                && camino(v1.getRuta(), "Depósito Central", "Centro Norte", "Centro Este"));
+        verificar("viaje 1: el pedido deja de estar pendiente", ids(s.getPedidosPendientes(), 107, 103)
+                && !s.buscarPedido(104).isEncontrado());
+        verificar("viaje 1: los lotes cargados salen del stock", ids(s.getStock(), 203, 204, 206));
+
+        // Viaje 2: sigue con 107 -> Centro Norte y lo que queda del stock entra entero (26 kg).
+        ResultadoViaje v2 = s.planificarViaje(1);
+        verificar("viaje 2: atiende #107 con el stock restante", v2.isDespachado()
+                && v2.getPedido().getId() == 107
+                && ids(v2.getCarga().getSeleccion(), 203, 204, 206)
+                && v2.getCarga().getPrioridadTotal() == 120);
+        verificar("viaje 2: ruta directa a Centro Norte en 10 min", v2.getRuta().getTiempoTotal() == 10);
+        verificar("viaje 2: queda #103 y el stock vacío", ids(s.getPedidosPendientes(), 103)
+                && s.getStock().length == 0);
+
+        // Viaje 3: hay pedido pero no queda mercadería.
+        ResultadoViaje v3 = s.planificarViaje(1);
+        verificar("viaje 3: sin stock no se despacha", !v3.isDespachado() && v3.getCarga().isVacia()
+                && v3.getRuta() == null);
+        verificar("viaje 3: el pedido sigue pendiente", ids(s.getPedidosPendientes(), 103));
+    }
+
+    private static void pruebasViajeNoDespachado() {
+        SistemaLogistica sinPedidos = new SistemaLogistica(redChica());
+        sinPedidos.agregarVehiculo(new Vehiculo(1, 30, "Depósito Central"));
+        sinPedidos.agregarLote(new Lote(1, 5, 10));
+        ResultadoViaje vacio = sinPedidos.planificarViaje(1);
+        verificar("sin pedidos pendientes no se despacha", !vacio.isDespachado()
+                && vacio.getPedido() == null && sinPedidos.getStock().length == 1);
+
+        SistemaLogistica chico = sistemaConDatos();
+        ResultadoViaje noEntra = chico.planificarViaje(2);
+        verificar("vehículo de 4 kg: no se despacha", !noEntra.isDespachado()
+                && noEntra.getPedido().getId() == 104 && noEntra.getCarga().isVacia());
+        verificar("vehículo de 4 kg: no cambia nada", chico.getPedidosPendientes().length == 3
+                && chico.getStock().length == 6);
+
+        // A Centro Este se llega por Norte o por la directa: se cortan las dos.
+        SistemaLogistica cortado = sistemaConDatos();
+        cortado.deshabilitarConexion("Centro Norte", "Centro Este");
+        cortado.deshabilitarConexion("Depósito Central", "Centro Este");
+        ResultadoViaje sinRuta = cortado.planificarViaje(1);
+        verificar("sin ruta al destino no se despacha", !sinRuta.isDespachado()
+                && sinRuta.getRuta() != null && !sinRuta.getRuta().isExiste());
+        verificar("sin ruta: el pedido y el stock no cambian", cortado.getPedidosPendientes().length == 3
+                && cortado.getStock().length == 6);
+
+        verificar("viaje de un vehículo inexistente lanza excepción", planificarViajeLanza(cortado, 9));
+    }
+
+    /** Pedidos, stock y vehículos del camino feliz sobre la red chica. */
+    private static SistemaLogistica sistemaConDatos() {
+        SistemaLogistica s = new SistemaLogistica(redChica());
+        s.agregarPedido(new Pedido(107, "Centro Norte", LocalDate.of(2026, 11, 20), 5, 300));
+        s.agregarPedido(new Pedido(104, "Centro Este", LocalDate.of(2026, 11, 18), 5, 250));
+        s.agregarPedido(new Pedido(103, "Centro Norte", LocalDate.of(2026, 11, 25), 4, 150));
+        s.agregarLote(new Lote(201, 8, 40));
+        s.agregarLote(new Lote(202, 12, 55));
+        s.agregarLote(new Lote(203, 5, 20));
+        s.agregarLote(new Lote(204, 15, 70));
+        s.agregarLote(new Lote(205, 10, 45));
+        s.agregarLote(new Lote(206, 6, 30));
+        s.agregarVehiculo(new Vehiculo(1, 30, "Depósito Central"));
+        s.agregarVehiculo(new Vehiculo(2, 4, "Depósito Central"));
+        return s;
+    }
+
+    private static boolean planificarViajeLanza(SistemaLogistica s, int idVehiculo) {
+        try {
+            s.planificarViaje(idVehiculo);
             return false;
         } catch (IllegalArgumentException e) {
             return true;

@@ -16,6 +16,7 @@ import logistica.resultado.ResultadoBusqueda;
 import logistica.resultado.ResultadoCarga;
 import logistica.resultado.ResultadoOrdenamiento;
 import logistica.resultado.ResultadoRuta;
+import logistica.resultado.ResultadoViaje;
 
 /**
  * Fachada que reúne los datos de la organización y los mantiene consistentes:
@@ -148,6 +149,47 @@ public class SistemaLogistica {
         return SeleccionCargas.seleccionar(getStock(), vehiculo.getCapacidad(), conTraza);
     }
 
+    // Integración: un viaje encadena F1 -> F3 -> F2
+
+    public ResultadoViaje planificarViaje(int idVehiculo) {
+        return planificarViaje(idVehiculo, false);
+    }
+
+    /**
+     * Planifica y despacha un viaje del vehículo:
+     *   1. F1 elige el pedido más urgente, que fija el destino.
+     *   2. F3 elige los lotes del stock con mayor prioridad total que entran en el vehículo.
+     *   3. F2 calcula la ruta más rápida desde el depósito del vehículo hasta el destino.
+     * Si los tres pasos salen bien, el pedido deja de estar pendiente y los lotes cargados
+     * salen del stock. Si alguno falla, no se modifica nada y se informa el motivo.
+     */
+    public ResultadoViaje planificarViaje(int idVehiculo, boolean conTraza) {
+        Vehiculo vehiculo = getVehiculo(idVehiculo);
+
+        Pedido pedido = pedidoMasUrgente();
+        if (pedido == null) {
+            return ResultadoViaje.noDespachado(vehiculo, null, null, null, "No hay pedidos pendientes");
+        }
+
+        ResultadoCarga carga = armarCarga(idVehiculo, conTraza);
+        if (carga.isVacia()) {
+            return ResultadoViaje.noDespachado(vehiculo, pedido, carga, null,
+                    "Ningún lote del stock entra en el vehículo");
+        }
+
+        ResultadoRuta ruta = rutaMasRapida(vehiculo.getDeposito(), pedido.getCentroDestino(), conTraza);
+        if (!ruta.isExiste()) {
+            return ResultadoViaje.noDespachado(vehiculo, pedido, carga, ruta,
+                    "No hay ruta disponible hasta " + pedido.getCentroDestino());
+        }
+
+        quitarPedido(pedido.getId());
+        for (Lote lote : carga.getSeleccion()) {
+            quitarLote(lote.getId());
+        }
+        return ResultadoViaje.despachado(vehiculo, pedido, carga, ruta);
+    }
+
     // Consultas
 
     public RedVial getRed() { return red; }
@@ -168,8 +210,26 @@ public class SistemaLogistica {
         return v;
     }
 
-    // Recorridos lineales para validar ids repetidos y ubicar un vehículo:
+    // Recorridos lineales para validar ids repetidos, ubicar un vehículo y quitar lo despachado:
     // son colecciones chicas y no hace falta tenerlas ordenadas.
+
+    private void quitarPedido(int id) {
+        for (int i = 0; i < pedidos.size(); i++) {
+            if (pedidos.get(i).getId() == id) {
+                pedidos.remove(i);
+                return;
+            }
+        }
+    }
+
+    private void quitarLote(int id) {
+        for (int i = 0; i < stock.size(); i++) {
+            if (stock.get(i).getId() == id) {
+                stock.remove(i);
+                return;
+            }
+        }
+    }
 
     private Pedido buscarPedidoPendiente(int id) {
         for (Pedido p : pedidos) {
