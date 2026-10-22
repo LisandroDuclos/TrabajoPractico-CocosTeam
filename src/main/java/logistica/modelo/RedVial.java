@@ -67,6 +67,10 @@ public class RedVial {
         return ubicaciones.get(id);
     }
 
+    public boolean existeUbicacion(String nombre) {
+        return idPorNombre.containsKey(nombre);
+    }
+
     public int getId(String nombre) {
         Integer id = idPorNombre.get(nombre);
         if (id == null) {
