@@ -12,6 +12,7 @@ import logistica.modelo.Pedido.Criterio;
 import logistica.modelo.RedVial;
 import logistica.modelo.Vehiculo;
 import logistica.resultado.ResultadoOrdenamiento;
+import logistica.sistema.BitacoraViajes;
 import logistica.sistema.SistemaLogistica;
 
 public class Main {
@@ -160,8 +161,6 @@ public class Main {
     //  Integración: cada viaje encadena F1 (pedido más urgente) -> F3 (carga) -> F2 (ruta)
 
     private static void demoIntegrada() {
-        titulo("INTEGRACIÓN - Viajes de punta a punta (F1 -> F3 -> F2)");
-
         // Todos los destinos existen en la red, a diferencia de los datos de la demo de F1.
         SistemaLogistica sistema = new SistemaLogistica(crearRedDeEjemplo());
         sistema.agregarPedido(new Pedido(107, "Centro Norte",  LocalDate.of(2026, 11, 20), 5, 300));
@@ -177,28 +176,25 @@ public class Main {
         sistema.agregarLote(new Lote(206,  6, 30));
         sistema.agregarVehiculo(new Vehiculo(1, 30, "Depósito Central"));
 
-        subtitulo("Pedidos pendientes");
-        System.out.println(sistema.pedidosPorPrioridad());
-        System.out.println(sistema.buscarPedido(104));
+        BitacoraViajes bitacora = new BitacoraViajes(sistema);
+        bitacora.presentar(1);
 
         // 1) 104 y 107 empatan en prioridad 5: gana 104 por fecha más cercana.
-        subtitulo("1) Primer viaje de V1, con las decisiones del cálculo de la ruta");
-        System.out.println(sistema.planificarViaje(1, true));
+        bitacora.viaje(1, true);
 
         // 2) Sigue con 107 y el stock que quedó: los tres lotes entran (26 kg).
-        subtitulo("2) Segundo viaje de V1, con lo que quedó en el stock");
-        System.out.println(sistema.planificarViaje(1));
+        bitacora.viaje(1);
 
         // 3) Llega mercadería, se corta Centro Norte -> Centro Este y F2 recalcula.
-        subtitulo("3) Llega mercadería y se corta Centro Norte -> Centro Este");
+        bitacora.evento("llegan al depósito los lotes #207, #208 y #209");
         sistema.agregarLote(new Lote(207, 10, 50));
         sistema.agregarLote(new Lote(208, 12, 35));
         sistema.agregarLote(new Lote(209,  9, 40));
+        bitacora.evento("se corta la conexión Centro Norte -> Centro Este");
         sistema.deshabilitarConexion("Centro Norte", "Centro Este");
-        System.out.println(sistema.planificarViaje(1, true));
+        bitacora.viaje(1, true);
 
-        subtitulo("Pedidos que siguen pendientes");
-        System.out.println(sistema.pedidosPorPrioridad());
+        bitacora.resumen();
     }
 
     private static void titulo(String texto) {
