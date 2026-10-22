@@ -8,6 +8,7 @@ import logistica.modelo.RedVial;
 import logistica.modelo.Ubicacion;
 import logistica.modelo.Vehiculo;
 import logistica.resultado.ResultadoBusqueda;
+import logistica.resultado.ResultadoCarga;
 import logistica.resultado.ResultadoRuta;
 import logistica.sistema.SistemaLogistica;
 
@@ -28,6 +29,8 @@ public class PruebasSistema {
         pruebasPedidos();
         System.out.println("=== Pruebas: F2 desde el sistema ===");
         pruebasRutas();
+        System.out.println("=== Pruebas: F3 desde el sistema ===");
+        pruebasCargas();
 
         System.out.println();
         System.out.println("Resultado: " + ok + "/" + (ok + fallas) + " OK");
@@ -140,6 +143,49 @@ public class PruebasSistema {
 
         verificar("conexión inexistente: no se deshabilita", !s.deshabilitarConexion("Centro Este", "Centro Norte"));
         verificar("ruta hacia una ubicación inexistente lanza excepción", rutaLanza(s, "Depósito Central", "Centro Sur"));
+    }
+
+    //  F3 desde la fachada
+
+    private static void pruebasCargas() {
+        SistemaLogistica s = new SistemaLogistica(redChica());
+        s.agregarVehiculo(new Vehiculo(1, 30, "Depósito Central"));
+        s.agregarVehiculo(new Vehiculo(2, 4, "Depósito Central"));
+        verificar("stock vacío: no se carga nada", s.armarCarga(1).isVacia());
+
+        // Sumar de mayor a menor prioridad (204 + 202) da 125; el óptimo es 140.
+        s.agregarLote(new Lote(201, 8, 40));
+        s.agregarLote(new Lote(202, 12, 55));
+        s.agregarLote(new Lote(203, 5, 20));
+        s.agregarLote(new Lote(204, 15, 70));
+        s.agregarLote(new Lote(205, 10, 45));
+        s.agregarLote(new Lote(206, 6, 30));
+
+        ResultadoCarga carga = s.armarCarga(1);
+        verificar("usa la capacidad del vehículo", carga.getCapacidad() == 30);
+        verificar("elige 201 + 202 + 205 con prioridad 140", ids(carga.getSeleccion(), 201, 202, 205)
+                && carga.getPrioridadTotal() == 140 && carga.getPesoTotal() == 30
+                && carga.getCapacidadRestante() == 0);
+        verificar("vehículo de 4 kg: ningún lote entra", s.armarCarga(2).isVacia());
+        verificar("armar la carga no saca lotes del stock", s.getStock().length == 6);
+        verificar("armar carga de un vehículo inexistente lanza excepción", armarCargaLanza(s, 9));
+    }
+
+    private static boolean armarCargaLanza(SistemaLogistica s, int idVehiculo) {
+        try {
+            s.armarCarga(idVehiculo);
+            return false;
+        } catch (IllegalArgumentException e) {
+            return true;
+        }
+    }
+
+    private static boolean ids(Lote[] lotes, int... esperados) {
+        if (lotes.length != esperados.length) return false;
+        for (int i = 0; i < lotes.length; i++) {
+            if (lotes[i].getId() != esperados[i]) return false;
+        }
+        return true;
     }
 
     private static boolean camino(ResultadoRuta ruta, String... esperados) {

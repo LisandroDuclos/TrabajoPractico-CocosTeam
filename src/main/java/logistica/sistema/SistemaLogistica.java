@@ -3,6 +3,7 @@ package logistica.sistema;
 import java.util.ArrayList;
 import java.util.List;
 
+import logistica.algoritmos.dinamica.SeleccionCargas;
 import logistica.algoritmos.dyc.BusquedaBinaria;
 import logistica.algoritmos.dyc.MergeSort;
 import logistica.algoritmos.greedy.Dijkstra;
@@ -12,6 +13,7 @@ import logistica.modelo.Pedido.Criterio;
 import logistica.modelo.RedVial;
 import logistica.modelo.Vehiculo;
 import logistica.resultado.ResultadoBusqueda;
+import logistica.resultado.ResultadoCarga;
 import logistica.resultado.ResultadoOrdenamiento;
 import logistica.resultado.ResultadoRuta;
 
@@ -129,6 +131,21 @@ public class SistemaLogistica {
     /** Devuelve true si la conexión existe y quedó habilitada. */
     public boolean habilitarConexion(String origen, String destino) {
         return red.habilitarConexion(origen, destino);
+    }
+
+    // Funcionalidad 3: selección de cargas prioritarias (Programación Dinámica)
+
+    public ResultadoCarga armarCarga(int idVehiculo) {
+        return armarCarga(idVehiculo, false);
+    }
+
+    /**
+     * Elige los lotes del stock con la mayor prioridad total que entran en el vehículo.
+     * Sólo consulta: el stock no cambia hasta que se despacha el viaje.
+     */
+    public ResultadoCarga armarCarga(int idVehiculo, boolean conTraza) {
+        Vehiculo vehiculo = getVehiculo(idVehiculo);
+        return SeleccionCargas.seleccionar(getStock(), vehiculo.getCapacidad(), conTraza);
     }
 
     // Consultas
