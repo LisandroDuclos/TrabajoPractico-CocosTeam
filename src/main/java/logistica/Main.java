@@ -29,7 +29,7 @@ public class Main {
     private static void demoPedidos() {
         titulo("FUNCIONALIDAD 1 - Organización y consulta de pedidos");
 
-        // Datos con empates a propósito:
+        // Datos hardcoded para la demo:
         //  - 104 y 107: misma prioridad (5), distinta fecha  -> gana la fecha más cercana.
         //  - 102 y 109: misma prioridad (3) y misma fecha    -> gana el id menor.
         //  - 101 y 105: misma fecha                          -> en el orden por fecha gana el id menor.
@@ -49,12 +49,12 @@ public class Main {
         System.out.println(MergeSort.ordenar(pedidos, Criterio.FECHA));
         System.out.println(MergeSort.ordenar(pedidos, Criterio.PRIORIDAD));
 
-        // La búsqueda binaria necesita el arreglo ordenado por id: se prepara una vez.
+        // Ordenamiento
         Pedido[] porId = MergeSort.ordenar(pedidos, Criterio.ID).getPedidos();
         System.out.println(BusquedaBinaria.buscarPorId(porId, 108));
         System.out.println(BusquedaBinaria.buscarPorId(porId, 111));
 
-        // Traza paso a paso con un conjunto chico, para ver cómo trabaja D&C.
+        // Traza
         titulo("Traza de Merge Sort (por prioridad) y búsqueda binaria");
         Pedido[] chico = { pedidos[0], pedidos[1], pedidos[2], pedidos[3], pedidos[4], pedidos[5] };
         ResultadoOrdenamiento r = MergeSort.ordenar(chico, Criterio.PRIORIDAD, true);
@@ -67,7 +67,7 @@ public class Main {
         System.out.println(BusquedaBinaria.buscarPorId(chicoPorId, 105, true));
     }
 
-    //  Funcionalidad 2: cálculo de la ruta más rápida usando Greedy - Dijkstra
+    //  Funcionalidad 2
 
     private static void demoRutas() {
         titulo("FUNCIONALIDAD 2 - Cálculo de la ruta más rápida");
@@ -96,10 +96,7 @@ public class Main {
         System.out.println(Dijkstra.calcular(red, "Depósito Central", "Centro Puerto", true));
     }
 
-    /**
-     * Red de ejemplo (tiempos en minutos). Todas las conexiones son de un solo sentido;
-     * al Puerto sólo se llega desde Depósito Sur, y del Puerto no sale ninguna.
-     */
+    // Red ejemplo
     private static RedVial crearRedDeEjemplo() {
         RedVial red = new RedVial();
         red.agregarUbicacion("Depósito Central");
@@ -121,12 +118,12 @@ public class Main {
         return red;
     }
 
-    //  Funcionalidad 3: selección de cargas prioritarias usando Programación Dinámica (mochila 0/1)
+    //  Funcionalidad 3
 
     private static void demoCargas() {
         titulo("FUNCIONALIDAD 3 - Selección de cargas prioritarias");
 
-        // 1) Caso normal, mostrando las decisiones de la reconstrucción.
+        // 1) Caso normal
         subtitulo("1) Vehículo de 30 kg con 6 lotes disponibles");
         Lote[] lotes = {
                 new Lote(201,  8, 40),
@@ -142,8 +139,7 @@ public class Main {
         System.out.println("Reconstrucción:");
         System.out.println(SeleccionCargas.seleccionar(lotes, 30, true));
 
-        // 2) Greedy por prioridad/peso toma 301 (6/kg) y 302 (5/kg): 30 kg y prioridad 160,
-        //    y el 303 ya no entra. La PD encuentra 302 + 303 con prioridad 220.
+        // 2) Greedy por prioridad/peso
         subtitulo("2) Caso donde Greedy por prioridad/peso no da el óptimo (capacidad 50 kg)");
         Lote[] contraejemplo = {
                 new Lote(301, 10, 60),
@@ -153,15 +149,15 @@ public class Main {
         System.out.println("  Greedy por prioridad/peso: #301 + #302 -> 30 kg, prioridad 160");
         System.out.println(SeleccionCargas.seleccionar(contraejemplo, 50, true));
 
-        // 3) Ningún lote entra en el vehículo.
+        // 3) Ningún lote entra en el vehículo
         subtitulo("3) Vehículo de 4 kg: ningún lote entra (el más liviano pesa 5 kg)");
         System.out.println(SeleccionCargas.seleccionar(lotes, 4, true));
     }
 
-    //  Integración: cada viaje encadena F1 (pedido más urgente) -> F3 (carga) -> F2 (ruta)
+    //  Integración
 
     private static void demoIntegrada() {
-        // Todos los destinos existen en la red, a diferencia de los datos de la demo de F1.
+
         SistemaLogistica sistema = new SistemaLogistica(crearRedDeEjemplo());
         sistema.agregarPedido(new Pedido(107, "Centro Norte",  LocalDate.of(2026, 11, 20), 5, 300));
         sistema.agregarPedido(new Pedido(104, "Centro Este",   LocalDate.of(2026, 11, 18), 5, 250));

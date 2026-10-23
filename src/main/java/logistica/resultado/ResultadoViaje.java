@@ -3,10 +3,7 @@ package logistica.resultado;
 import logistica.modelo.Pedido;
 import logistica.modelo.Vehiculo;
 
-/**
- * Viaje planificado encadenando las tres funcionalidades: el pedido que atiende (F1),
- * la carga que lleva (F3) y la ruta hasta su destino (F2).
- */
+// Viaje planificado
 public class ResultadoViaje {
 
     private final Vehiculo vehiculo;

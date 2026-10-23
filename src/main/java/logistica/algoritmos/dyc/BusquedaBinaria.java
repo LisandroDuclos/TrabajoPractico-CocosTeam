@@ -3,20 +3,7 @@ package logistica.algoritmos.dyc;
 import logistica.modelo.Pedido;
 import logistica.resultado.ResultadoBusqueda;
 
-/**
- * Búsqueda de un pedido por identificador mediante búsqueda binaria (Divide y Conquista).
- *
- *   DIVIDIR:     se toma el elemento del medio del intervalo [ini, fin].
- *   CONQUISTAR:  si no es el buscado, se resuelve el subproblema en UNA sola mitad;
- *                la otra se descarta porque, al estar ordenado, no puede contener el id.
- *   COMBINAR:    trivial, la respuesta de la mitad es la respuesta del problema.
- *
- * Precondición (organización de los datos): el arreglo debe estar ordenado por id
- * (MergeSort con Criterio.ID). Ese orden se prepara una vez en O(n log n) y luego
- * se reutiliza en todas las búsquedas.
- *
- * Complejidad temporal: T(n) = T(n/2) + O(1)  =>  O(log n) por búsqueda.
- */
+// Busqueda binaria
 public class BusquedaBinaria {
 
     private static int pasos;

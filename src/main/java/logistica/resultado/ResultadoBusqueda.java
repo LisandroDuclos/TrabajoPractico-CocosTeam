@@ -2,10 +2,7 @@ package logistica.resultado;
 
 import logistica.modelo.Pedido;
 
-/**
- * Lo que devuelve la búsqueda: el pedido encontrado (o null)
- * y la cantidad de pasos (elementos del medio examinados).
- */
+// Pedido encontrado
 public class ResultadoBusqueda {
 
     private final int idBuscado;

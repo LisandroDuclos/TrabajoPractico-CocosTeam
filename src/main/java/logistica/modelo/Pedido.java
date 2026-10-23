@@ -30,16 +30,7 @@ public class Pedido {
     public int getPrioridad() { return prioridad; }
     public int getPeso() { return peso; }
 
-    /**
-     * Compara este pedido con otro según el criterio indicado.
-     * Devuelve un número negativo si este pedido debe ir ANTES que el otro,
-     * positivo si debe ir DESPUÉS y 0 si son equivalentes.
-     *
-     * Reglas de desempate:
-     *   FECHA:     fecha límite más cercana; empate -> id menor.
-     *   PRIORIDAD: prioridad mayor; empate -> fecha más cercana; empate -> id menor.
-     *   ID:        id menor.
-     */
+    // Comparacion con otro pedido segun criterio indicado
     public int compararPor(Criterio criterio, Pedido otro) {
         switch (criterio) {
             case FECHA: {

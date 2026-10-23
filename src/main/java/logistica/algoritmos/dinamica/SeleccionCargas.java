@@ -19,7 +19,7 @@ public class SeleccionCargas {
 
         int n = lotes.length;
         // M[i][j] = mejor prioridad usando los lotes 0..i con capacidad j.
-        // Una fila por lote (sin fila de ceros) y una columna por cada capacidad de 0 a la máxima.
+    
         int[][] M = new int[n][capacidad + 1];
 
         for (int i = 0; i < n; i++) {
@@ -27,13 +27,13 @@ public class SeleccionCargas {
             int valor = lotes[i].getPrioridad();
             for (int j = 0; j <= capacidad; j++) {
                 if (i == 0 && peso > j) {
-                    M[i][j] = 0;                 // el primer lote no entra
+                    M[i][j] = 0;                 
                 } else if (i == 0) {
-                    M[i][j] = valor;             // el primer lote entra
+                    M[i][j] = valor;           
                 } else if (peso > j) {
-                    M[i][j] = M[i - 1][j];       // no entra: queda lo mejor sin este lote
+                    M[i][j] = M[i - 1][j];      
                 } else {
-                    // Se elige lo mejor entre no llevarlo o llevarlo y usar lo que sobra.
+                    
                     M[i][j] = Math.max(M[i - 1][j], M[i - 1][j - peso] + valor);
                 }
             }
@@ -44,8 +44,7 @@ public class SeleccionCargas {
             return new ResultadoCarga(new Lote[0], capacidad, 0, 0, celdas);
         }
 
-        // Reconstrucción: desde M[n-1][capacidad] hacia la primera fila.
-        // Si el valor cambia respecto de la fila de arriba, el lote i fue parte de la solución.
+        // Reconstrucción: desde M[n-1][capacidad] hacia la primera fila 
         boolean[] incluido = new boolean[n];
         int cantidad = 0;
         int j = capacidad;
@@ -63,7 +62,7 @@ public class SeleccionCargas {
                 traza(conTraza, comparacion + decision(entra, lotes[i], j));
             }
         }
-        // Primera fila: no hay fila de arriba, el lote está si aporta prioridad con la capacidad que queda.
+        // Primera fila
         boolean entraPrimero = M[0][j] > 0;
         String comparacionPrimero = conTraza ? "Lote #" + lotes[0].getId() + ": M[0][" + j + "]=" + M[0][j]
                 + (entraPrimero ? " > 0" : " = 0") : null;
@@ -76,7 +75,7 @@ public class SeleccionCargas {
             traza(conTraza, comparacionPrimero + decision(entraPrimero, lotes[0], j));
         }
 
-        // Se arma la selección respetando el orden original de los lotes.
+       
         Lote[] seleccion = new Lote[cantidad];
         int k = 0;
         int pesoTotal = 0;
@@ -86,7 +85,7 @@ public class SeleccionCargas {
                 pesoTotal += lotes[i].getPeso();
             }
         }
-        // La prioridad óptima es la última celda de la tabla.
+        
         return new ResultadoCarga(seleccion, capacidad, pesoTotal, M[n - 1][capacidad], celdas);
     }
 

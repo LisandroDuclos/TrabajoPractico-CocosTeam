@@ -2,10 +2,7 @@ package logistica.resultado;
 
 import logistica.modelo.Pedido;
 
-/**
- * Lo que devuelve el ordenamiento: los pedidos ordenados, el criterio usado
- * y la cantidad de comparaciones realizadas (para contrastar con n·log2(n)).
- */
+// Pedidos ordenados y cantidad de comparaciones
 public class ResultadoOrdenamiento {
 
     private final Pedido[] pedidos;

@@ -1,8 +1,6 @@
 package logistica.modelo;
 
-/**
- * Vehículo que sale de un depósito con una capacidad máxima de carga.
- */
+// Vehiculo slae con carga maxima
 public class Vehiculo {
 
     private final int id;

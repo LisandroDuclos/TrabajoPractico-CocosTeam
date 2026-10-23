@@ -4,19 +4,7 @@ import logistica.modelo.Pedido;
 import logistica.modelo.Pedido.Criterio;
 import logistica.resultado.ResultadoOrdenamiento;
 
-/**
- * Ordenamiento de pedidos por Merge Sort (Divide y Conquista).
- *
- *   DIVIDIR:     se parte el arreglo en dos mitades por el medio.
- *   CONQUISTAR:  se ordena recursivamente cada mitad.
- *   COMBINAR:    se mezclan las dos mitades ya ordenadas en un solo tramo ordenado.
- *
- * Complejidad temporal: T(n) = 2T(n/2) + O(n)  =>  O(n log n) en el mejor,
- * promedio y peor caso (la división siempre es por la mitad, sin importar los datos).
- * Espacio extra: O(n) por el arreglo auxiliar usado al mezclar.
- *
- * Es estable: ante dos pedidos equivalentes se conserva el orden original.
- */
+// MergeSort divide y conquista
 public class MergeSort {
 
     private static long comparaciones;
@@ -42,7 +30,7 @@ public class MergeSort {
         return new ResultadoOrdenamiento(copia, criterio, comparaciones);
     }
 
-    /** Ordena el tramo arr[ini..fin] (ambos inclusive). */
+    // Ordena el tramo
     private static void mergeSort(Pedido[] arr, Pedido[] aux, int ini, int fin, Criterio criterio, int nivel) {
         // CASO BASE: un tramo de 0 o 1 elemento ya está ordenado.
         if (ini >= fin) {
@@ -63,10 +51,7 @@ public class MergeSort {
         imprimirTraza(nivel, "Mezclar -> " + ids(arr, ini, fin));
     }
 
-    /**
-     * Mezcla los tramos ordenados arr[ini..medio] y arr[medio+1..fin].
-     * Recorre ambos con un índice cada uno y en cada paso copia el menor: O(n).
-     */
+    // Mezcla los tramos
     private static void mezclar(Pedido[] arr, Pedido[] aux, int ini, int medio, int fin, Criterio criterio) {
         for (int k = ini; k <= fin; k++) {
             aux[k] = arr[k];
@@ -78,7 +63,7 @@ public class MergeSort {
 
         while (i <= medio && j <= fin) {
             comparaciones++;
-            // "<= 0" toma primero el de la izquierda en caso de empate: eso da la estabilidad.
+            
             if (aux[i].compararPor(criterio, aux[j]) <= 0) {
                 arr[k++] = aux[i++];
             } else {
