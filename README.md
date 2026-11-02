@@ -31,6 +31,7 @@ Todo el desarrollo del proyecto está realizado en [Informe](https://docs.google
 | F1 | Organización y consulta de pedidos: ordenar por fecha límite o por prioridad, y buscar un pedido por id | Divide y Conquista | `MergeSort`, `BusquedaBinaria` |
 | F2 | Ruta más rápida entre dos ubicaciones de la red vial, con conexiones que se pueden deshabilitar | Greedy | `Dijkstra`, `MinHeap` |
 | F3 | Selección de los lotes de mayor prioridad total que entran en un vehículo | Programación Dinámica | `SeleccionCargas` |
+| A1 | Consultas del tiempo mínimo y el recorrido entre cualquier par de ubicaciones, sin repetir el cálculo | Programación Dinámica | `FloydWarshall`, `TablaRutas` |
 | Integración | Planificación de un viaje completo que encadena F1 → F3 → F2 | — | `SistemaLogistica`, `BitacoraViajes` |
 
 ---
@@ -62,12 +63,13 @@ TrabajoPractico-CocosTeam/
 │   │   ├── algoritmos/
 │   │   │   ├── dyc/                F1: MergeSort, BusquedaBinaria
 │   │   │   ├── greedy/             F2: Dijkstra, MinHeap
-│   │   │   ├── dinamica/           F3: SeleccionCargas (mochila 0/1)
+│   │   │   ├── dinamica/           F3: SeleccionCargas (mochila 0/1) · A1: FloydWarshall
 │   │   │   └── backtracking/       Reservado para la segunda etapa (vacío)
 │   │   ├── resultado/              Objetos que devuelven los algoritmos (con métricas)
 │   │   │   ├── ResultadoOrdenamiento, ResultadoBusqueda   (F1)
 │   │   │   ├── ResultadoRuta                              (F2)
 │   │   │   ├── ResultadoCarga                             (F3)
+│   │   │   ├── TablaRutas, ResultadoConsultaRuta          (A1)
 │   │   │   └── ResultadoViaje                             (integración)
 │   │   └── sistema/
 │   │       ├── SistemaLogistica.java   Fachada: datos, validaciones y planificación de viajes
@@ -76,6 +78,7 @@ TrabajoPractico-CocosTeam/
 │       ├── PruebasPedidos.java     F1
 │       ├── PruebasRutas.java       F2
 │       ├── PruebasCargas.java      F3
+│       ├── PruebasConsultasRutas.java  A1
 │       └── PruebasSistema.java     Integración
 └── .vscode/settings.json           sourcePaths y carpeta de salida (out/)
 ```
@@ -99,6 +102,7 @@ java -cp out logistica.Main
 java -cp out logistica.PruebasPedidos
 java -cp out logistica.PruebasRutas
 java -cp out logistica.PruebasCargas
+java -cp out logistica.PruebasConsultasRutas
 java -cp out logistica.PruebasSistema
 ```
 
@@ -120,14 +124,15 @@ java -cp out logistica.Main
 
 ### Ejecutar un solo escenario
 
-`Main.main` corre las cuatro demos en orden:
+`Main.main` corre las cinco demos en orden:
 
 ```java
 public static void main(String[] args) {
-    demoPedidos();    // F1
-    demoRutas();      // F2
-    demoCargas();     // F3
-    demoIntegrada();  // F1 -> F3 -> F2
+    demoPedidos();         // F1
+    demoRutas();           // F2
+    demoCargas();          // F3
+    demoConsultasRutas();  // A1
+    demoIntegrada();       // F1 -> F3 -> F2
 }
 ```
 
@@ -193,7 +198,17 @@ Usa los lotes de la [sección 6.3](#63-lotes-de-la-demo-f3).
 | 2) Contraejemplo de Greedy | Vehículo de 50 kg, lotes #301, #302 y #303 | Elegir por prioridad/peso daría #301 + #302 (prioridad 160). La programación dinámica elige **#302 + #303: 50 kg, prioridad 220**. |
 | 3) Nada entra | Vehículo de 4 kg con los 6 lotes del caso 1 | No se selecciona ningún lote: el más liviano pesa 5 kg. |
 
-### 5.4 Integración: jornada de viajes (`demoIntegrada`)
+### 5.4 A1: Consultas de rutas entre todos los centros (`demoConsultasRutas`)
+
+Usa la red vial de la [sección 6.2](#62-red-vial-de-ejemplo-f2-e-integración), a través de `SistemaLogistica`.
+
+| Escenario | Qué se hace | Resultado esperado |
+|---|---|---|
+| 1) Preparación con traza | `prepararConsultas(true)` | Se muestran la matriz inicial, cada mejora por etapa `k` y la matriz final de tiempos. |
+| 2) Consultas | Central → Puerto, Norte → Central, Central → Central y Puerto → Central | **30 min**, **33 min**, **0 min** y *No existe conexión*. Las cuatro consultas usan una sola preparación. |
+| 3) Cambio en la red | Se corta Norte → Este y se consulta Central → Sur y Norte → Este | **27 min** por Central → Oeste → Sur y **75 min** por Norte → Sur → Central → Este. La primera consulta recalcula la tabla: 2 preparaciones en total. |
+
+### 5.5 Integración: jornada de viajes (`demoIntegrada`)
 
 Un vehículo de 30 kg (V1) que sale del Depósito Central hace tres viajes. En cada uno, el sistema elige qué pedido atender (F1), qué se carga (F3) y por dónde ir (F2). Los datos están en la [sección 6.4](#64-datos-de-la-demo-integrada).
 
@@ -204,6 +219,7 @@ Un vehículo de 30 kg (V1) que sale del Depósito Central hace tres viajes. En c
 | Eventos | Llegan los lotes #207, #208 y #209. Se corta Centro Norte → Centro Este. | El sistema registra los cambios entre viajes. |
 | 3 (con traza) | #102 y #108 empatan en prioridad 4. Gana #102 porque vence antes. | Pedido **#102 → Centro Este**. Carga #207 y #209 (19 kg, prioridad 90). Como Norte → Este está cortada, la ruta es la directa Central → Este (**25 min**). Despachado. |
 | Resumen | Tabla de la jornada | 3 de 3 viajes despachados, 53 min de viaje, prioridad entregada 350. Quedan pendientes #108 y #110, y en stock el lote #208. |
+| Consultas A1 | Tiempo desde Depósito Central hasta los destinos pendientes, con la red ya cortada | #108 → Centro Oeste: **15 min**. #110 → Centro Puerto: **34 min** por Central → Oeste → Sur → Puerto. |
 
 La bitácora muestra cada viaje en tres pasos (`[1/3]`, `[2/3]`, `[3/3]`) y explica la decisión de cada uno, por ejemplo qué regla de desempate eligió el pedido.
 
@@ -372,6 +388,21 @@ La red ([`RedVial`](src/main/java/logistica/modelo/RedVial.java)) es un grafo di
 - **Complejidad:** O(n · W) en tiempo y memoria, donde W es la capacidad en kg (pseudo-polinomial).
 - Devuelve un `ResultadoCarga` con la selección, el peso total, la prioridad total, la capacidad restante y las celdas calculadas.
 
+### 7.5 A1: Floyd-Warshall (Programación Dinámica)
+
+[`FloydWarshall.java`](src/main/java/logistica/algoritmos/dinamica/FloydWarshall.java) · [`TablaRutas.java`](src/main/java/logistica/resultado/TablaRutas.java)
+
+- **Subproblema:** `M[i][j]` es el menor tiempo de `i` a `j` usando como intermedios sólo los nodos ya considerados.
+- **Caso base (`M0`):** 0 en la diagonal, el tiempo de la conexión directa si está habilitada, e infinito en el resto.
+- **Recurrencia:** `Mk[i][j] = min(Mk-1[i][j], Mk-1[i][k] + Mk-1[k][j])`. Alcanza una sola matriz porque, con `M[k][k] = 0`, la fila y la columna `k` no cambian en la etapa `k`.
+- **Infinito:** no se suma si alguno de los tramos es infinito, porque `Integer.MAX_VALUE + x` desborda y crearía rutas falsas.
+- **Reconstrucción:** `siguiente[i][j]` guarda el primer salto de la ruta de `i` a `j`. Se sigue desde el origen hasta el destino.
+- **Empates:** una ruta sólo se reemplaza por otra estrictamente mejor, así que entre rutas de igual tiempo se conserva la primera encontrada.
+- **Por qué no backtracking ni Dijkstra por consulta:** backtracking prueba todos los caminos, hasta O(n!) por par, y no guarda nada para reutilizar. Dijkstra recalcula en cada consulta, y A1 pide no repetir el cálculo.
+- **Complejidad:** preparación O(n³) en tiempo y O(n²) de memoria. Cada consulta cuesta O(largo de la ruta).
+- **Vigencia:** `RedVial` tiene un contador `version` que aumenta con cada cambio. Una tabla vieja no responde: lanza `IllegalStateException`. `SistemaLogistica` lo detecta y recalcula en la consulta siguiente, también si el cambio se hizo directo sobre la red.
+- `TablaRutas.consultar(origen, destino)` devuelve un `ResultadoConsultaRuta` con el tiempo y el recorrido, o informa que no existe conexión.
+
 ---
 
 ## 8. Integración de las funcionalidades
@@ -390,9 +421,11 @@ La integración se hace en el paquete `logistica.sistema`, **sin modificar los a
 | `rutaMasRapida(origen, destino)` | F2 | `Dijkstra` |
 | `deshabilitarConexion(...)` / `habilitarConexion(...)` | F2 | `RedVial` |
 | `armarCarga(idVehiculo)` | F3 | `SeleccionCargas` con la capacidad del vehículo y el stock actual |
+| `prepararConsultas()` | A1 | `FloydWarshall` |
+| `consultarRuta(origen, destino)` | A1 | `TablaRutas`. La prepara sólo si no existe o si la red cambió |
 | `planificarViaje(idVehiculo)` | F1 → F3 → F2 | Las tres anteriores, encadenadas |
 
-Todas tienen una variante con `conTraza`.
+Todas tienen una variante con `conTraza`, salvo `consultarRuta`, que sólo lee la tabla. `planificarViaje` sigue usando Dijkstra, porque F2 pide mostrar sus decisiones.
 
 ### 8.2 Validaciones al cargar datos
 
@@ -447,9 +480,10 @@ Las pruebas no usan JUnit: cada clase tiene un `main` que corre sus casos, impri
 | [`PruebasPedidos`](src/test/java/logistica/PruebasPedidos.java) | Ordenamiento (vacío, un elemento, ya ordenado, inverso, todos los desempates, no modifica el original), búsqueda (primero, último, medio, inexistentes, arreglo vacío) y volumen con 100.000 pedidos | 18 |
 | [`PruebasRutas`](src/test/java/logistica/PruebasRutas.java) | Min-heap (10.000 inserciones en orden), rutas (normal, origen = destino, sentido, sin salida, repetibilidad, con y sin traza dan lo mismo), deshabilitar y habilitar conexiones, validaciones y volumen con 100.000 ubicaciones | 31 |
 | [`PruebasCargas`](src/test/java/logistica/PruebasCargas.java) | Casos borde, optimalidad (contraejemplo de Greedy, ejemplo de la clase), validaciones, **200 casos aleatorios comparados contra fuerza bruta** y volumen con 1.000 lotes y capacidad de 10.000 kg | 23 |
+| [`PruebasConsultasRutas`](src/test/java/logistica/PruebasConsultasRutas.java) | Tiempos y recorridos, grafo de la clase, casos borde, tabla vieja tras cambios en la red, cantidad de preparaciones desde la fachada, **200 redes aleatorias comparadas contra Dijkstra en todos los pares** y volumen con 500 ubicaciones | 41 |
 | [`PruebasSistema`](src/test/java/logistica/PruebasSistema.java) | Vehículo, carga y validación de datos, F1/F2/F3 desde la fachada, viajes encadenados y viajes que no se despachan (sin pedidos, sin carga, sin ruta) | 57 |
 
-Estado actual: **129/129 OK**.
+Estado actual: **170/170 OK**.
 
 ---
 

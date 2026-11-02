@@ -12,6 +12,7 @@ public class RedVial {
     private final List<List<Conexion>> adyacencia = new ArrayList<>();
     private final Map<String, Integer> idPorNombre = new HashMap<>();
     private int cantidadConexiones = 0;
+    private int version = 0; // aumenta con cada cambio: permite saber si un cálculo guardado quedó viejo
 
     // Construcción de la red
 
@@ -23,6 +24,7 @@ public class RedVial {
         ubicaciones.add(u);
         adyacencia.add(new ArrayList<>());
         idPorNombre.put(nombre, u.getId());
+        version++;
     }
 
     public void agregarConexion(int origen, int destino, int tiempo) {
@@ -35,6 +37,7 @@ public class RedVial {
         Conexion c = new Conexion(destino, tiempo);
         adyacencia.get(origen).add(c);
         cantidadConexiones++;
+        version++;
     }
 
     public void agregarConexion(String origen, String destino, int tiempo) {
@@ -53,7 +56,10 @@ public class RedVial {
     private boolean cambiarEstado(int origen, int destino, boolean habilitada) {
         Conexion c = buscarConexion(origen, destino);
         if (c == null) return false;
-        c.setHabilitada(habilitada);
+        if (c.isHabilitada() != habilitada) {
+            c.setHabilitada(habilitada);
+            version++;
+        }
         return true;
     }
 
@@ -61,6 +67,7 @@ public class RedVial {
 
     public int cantidadUbicaciones() { return ubicaciones.size(); }
     public int cantidadConexiones() { return cantidadConexiones; }
+    public int getVersion() { return version; }
 
     public Ubicacion getUbicacion(int id) {
         validar(id);

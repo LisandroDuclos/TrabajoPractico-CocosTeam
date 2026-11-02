@@ -3,6 +3,7 @@ package logistica.sistema;
 import java.util.ArrayList;
 import java.util.List;
 
+import logistica.algoritmos.dinamica.FloydWarshall;
 import logistica.algoritmos.dinamica.SeleccionCargas;
 import logistica.algoritmos.dyc.BusquedaBinaria;
 import logistica.algoritmos.dyc.MergeSort;
@@ -14,9 +15,11 @@ import logistica.modelo.RedVial;
 import logistica.modelo.Vehiculo;
 import logistica.resultado.ResultadoBusqueda;
 import logistica.resultado.ResultadoCarga;
+import logistica.resultado.ResultadoConsultaRuta;
 import logistica.resultado.ResultadoOrdenamiento;
 import logistica.resultado.ResultadoRuta;
 import logistica.resultado.ResultadoViaje;
+import logistica.resultado.TablaRutas;
 
 /**
  * Fachada que reúne los datos de la organización y los mantiene consistentes:
@@ -29,6 +32,8 @@ public class SistemaLogistica {
     private final List<Pedido> pedidos = new ArrayList<>();
     private final List<Lote> stock = new ArrayList<>();
     private final List<Vehiculo> vehiculos = new ArrayList<>();
+    private TablaRutas tablaRutas;      // null hasta la primera preparación
+    private int preparaciones = 0;
 
     public SistemaLogistica(RedVial red) {
         if (red == null) {
@@ -148,6 +153,32 @@ public class SistemaLogistica {
         Vehiculo vehiculo = getVehiculo(idVehiculo);
         return SeleccionCargas.seleccionar(getStock(), vehiculo.getCapacidad(), conTraza);
     }
+
+    // Funcionalidad A1: consultas de rutas entre todos los centros (Programación Dinámica - Floyd)
+
+    public TablaRutas prepararConsultas() {
+        return prepararConsultas(false);
+    }
+
+    /** Procesamiento inicial O(n^3): deja calculados los tiempos y las rutas de todos los pares. */
+    public TablaRutas prepararConsultas(boolean conTraza) {
+        tablaRutas = FloydWarshall.calcular(red, conTraza);
+        preparaciones++;
+        return tablaRutas;
+    }
+
+    /**
+     * Responde con la tabla ya calculada, sin repetir el cálculo. Sólo vuelve a prepararla
+     * si todavía no existe o si la red cambió desde la última preparación.
+     */
+    public ResultadoConsultaRuta consultarRuta(String origen, String destino) {
+        if (tablaRutas == null || !tablaRutas.isVigente()) {
+            prepararConsultas();
+        }
+        return tablaRutas.consultar(origen, destino);
+    }
+
+    public int getPreparaciones() { return preparaciones; }
 
     // Integración: un viaje encadena F1 -> F3 -> F2
 

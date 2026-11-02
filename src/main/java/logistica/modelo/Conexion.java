@@ -26,7 +26,8 @@ public class Conexion {
         return habilitada;
     }
 
-    public void setHabilitada(boolean habilitada) {
+    // Sólo la cambia RedVial, que así registra la nueva versión de la red.
+    void setHabilitada(boolean habilitada) {
         this.habilitada = habilitada;
     }
 }

@@ -21,6 +21,7 @@ public class Main {
         demoPedidos();
         demoRutas();
         demoCargas();
+        demoConsultasRutas();
         demoIntegrada();
     }
 
@@ -154,6 +155,33 @@ public class Main {
         System.out.println(SeleccionCargas.seleccionar(lotes, 4, true));
     }
 
+    //  Funcionalidad A1
+
+    private static void demoConsultasRutas() {
+        titulo("FUNCIONALIDAD A1 - Consultas de rutas entre todos los centros");
+
+        SistemaLogistica sistema = new SistemaLogistica(crearRedDeEjemplo());
+
+        // 1) Procesamiento inicial: se calcula una sola vez, mostrando las mejoras de cada etapa.
+        subtitulo("1) Preparación con Floyd-Warshall");
+        System.out.println(sistema.prepararConsultas(true));
+
+        // 2) Las consultas leen la tabla: incluyen un par sin conexión y un origen igual al destino.
+        subtitulo("2) Consultas sobre la tabla ya calculada");
+        System.out.println(sistema.consultarRuta("Depósito Central", "Centro Puerto"));
+        System.out.println(sistema.consultarRuta("Centro Norte", "Depósito Central"));
+        System.out.println(sistema.consultarRuta("Depósito Central", "Depósito Central"));
+        System.out.println(sistema.consultarRuta("Centro Puerto", "Depósito Central"));
+        System.out.println("Preparaciones realizadas: " + sistema.getPreparaciones());
+
+        // 3) Si la red cambia, la próxima consulta recalcula: nunca responde con datos viejos.
+        subtitulo("3) Se corta Centro Norte -> Centro Este y se vuelve a consultar");
+        sistema.deshabilitarConexion("Centro Norte", "Centro Este");
+        System.out.println(sistema.consultarRuta("Depósito Central", "Depósito Sur"));
+        System.out.println(sistema.consultarRuta("Centro Norte", "Centro Este"));
+        System.out.println("Preparaciones realizadas: " + sistema.getPreparaciones());
+    }
+
     //  Integración
 
     private static void demoIntegrada() {
@@ -191,6 +219,13 @@ public class Main {
         bitacora.viaje(1, true);
 
         bitacora.resumen();
+
+        // A1 sobre el mismo sistema: los tiempos ya contemplan la conexión cortada.
+        subtitulo("Tiempos desde Depósito Central hasta los destinos pendientes (A1)");
+        for (Pedido pedido : sistema.pedidosPorPrioridad().getPedidos()) {
+            System.out.println("Pedido #" + pedido.getId() + ": "
+                    + sistema.consultarRuta("Depósito Central", pedido.getCentroDestino()));
+        }
     }
 
     private static void titulo(String texto) {
