@@ -32,8 +32,9 @@ Todo el desarrollo del proyecto está realizado en [Informe](https://docs.google
 | F2 | Ruta más rápida entre dos ubicaciones de la red vial, con conexiones que se pueden deshabilitar | Greedy | `Dijkstra`, `MinHeap` |
 | F3 | Selección de los lotes de mayor prioridad total que entran en un vehículo | Programación Dinámica | `SeleccionCargas` |
 | A1 | Consultas del tiempo mínimo y el recorrido entre cualquier par de ubicaciones, sin repetir el cálculo | Programación Dinámica | `FloydWarshall`, `TablaRutas` |
+| B1 | Recorrido con múltiples entregas: el orden de visita de hasta 8 centros que da el menor tiempo total, saliendo del depósito y volviendo a él | Backtracking | `RecorridoEntregas`, `ResultadoRecorrido` |
 | B3 | Todas las rutas entre un origen y un destino que no superen un tiempo máximo, no repitan ubicaciones ni pasen por ubicaciones prohibidas; indica la de menor tiempo | Backtracking | `RutasAlternativas`, `ResultadoRutasAlternativas` |
-| Integración | Planificación de un viaje completo que encadena F1 → F3 → F2 | — | `SistemaLogistica`, `BitacoraViajes` |
+| Integración | Planificación de un viaje completo que encadena F1 → F3 → F2, y de un reparto con varias entregas que encadena F1 → F3 → B1 | — | `SistemaLogistica`, `BitacoraViajes` |
 
 ---
 
@@ -65,14 +66,15 @@ TrabajoPractico-CocosTeam/
 │   │   │   ├── dyc/                F1: MergeSort, BusquedaBinaria
 │   │   │   ├── greedy/             F2: Dijkstra, MinHeap
 │   │   │   ├── dinamica/           F3: SeleccionCargas (mochila 0/1) · A1: FloydWarshall
-│   │   │   └── backtracking/       B3: RutasAlternativas
+│   │   │   └── backtracking/       B3: RutasAlternativas · B1: RecorridoEntregas
 │   │   ├── resultado/              Objetos que devuelven los algoritmos (con métricas)
 │   │   │   ├── ResultadoOrdenamiento, ResultadoBusqueda   (F1)
 │   │   │   ├── ResultadoRuta                              (F2)
 │   │   │   ├── ResultadoCarga                             (F3)
 │   │   │   ├── TablaRutas, ResultadoConsultaRuta          (A1)
 │   │   │   ├── ResultadoRutasAlternativas                 (B3)
-│   │   │   └── ResultadoViaje                             (integración)
+│   │   │   ├── ResultadoRecorrido                         (B1)
+│   │   │   └── ResultadoViaje, ResultadoReparto           (integración)
 │   │   └── sistema/
 │   │       ├── SistemaLogistica.java   Fachada: datos, validaciones y planificación de viajes
 │   │       └── BitacoraViajes.java     Presentación por consola de los viajes
@@ -82,6 +84,7 @@ TrabajoPractico-CocosTeam/
 │       ├── PruebasCargas.java      F3
 │       ├── PruebasConsultasRutas.java  A1
 │       ├── PruebasRutasAlternativas.java  B3
+│       ├── PruebasRecorridoEntregas.java  B1
 │       └── PruebasSistema.java     Integración
 └── .vscode/settings.json           sourcePaths y carpeta de salida (out/)
 ```
@@ -107,6 +110,7 @@ java -cp out logistica.PruebasRutas
 java -cp out logistica.PruebasCargas
 java -cp out logistica.PruebasConsultasRutas
 java -cp out logistica.PruebasRutasAlternativas
+java -cp out logistica.PruebasRecorridoEntregas
 java -cp out logistica.PruebasSistema
 ```
 
@@ -128,7 +132,7 @@ java -cp out logistica.Main
 
 ### Ejecutar un solo escenario
 
-`Main.main` corre las cinco demos en orden:
+`Main.main` corre las siete demos en orden:
 
 ```java
 public static void main(String[] args) {
@@ -137,6 +141,7 @@ public static void main(String[] args) {
     demoCargas();          // F3
     demoConsultasRutas();  // A1
     demoRutasAlternativas(); // B3
+    demoRecorridoEntregas(); // B1 (incluye un reparto F1 -> F3 -> B1)
     demoIntegrada();       // F1 -> F3 -> F2
 }
 ```
@@ -240,6 +245,19 @@ Usa una red propia (`crearRedParaAlternativas`) con conexiones en ambos sentidos
 | 4) Sin rutas | Máximo 20 min | *No existe ninguna ruta que cumpla las condiciones*. |
 | 5) Conexión cortada | Se deshabilita Este → Sur y se busca con máximo 80 min | **5 rutas**. La más rápida pasa a ser Central → Oeste → Sur → Puerto, **34 min**. |
 
+### 5.7 B1: Recorrido con múltiples entregas (`demoRecorridoEntregas`)
+
+Los casos 1, 3, 4 y 6 usan la red de B3 (`crearRedParaAlternativas`), el 2 la red de ejemplo de la [sección 6.2](#62-red-vial-de-ejemplo-f2-e-integración) y el 5 la red de 8 centros de la [sección 6.5](#65-red-de-8-centros-b1). Todos los recorridos salen de Depósito Central y vuelven a él.
+
+| Escenario | Qué se hace | Resultado esperado |
+|---|---|---|
+| 1) Tres centros, con traza | Centro Norte, Centro Este y Centro Oeste | Central → Norte → Este → Oeste → Central, **52 min**. El tramo Este → Oeste pasa por Depósito Sur. 13 nodos explorados, 3 recorridos completos y 3 podas por cota. |
+| 2) Sentidos únicos | Centro Norte y Centro Oeste en la red de ejemplo | **90 min**. El tramo Norte → Oeste atraviesa Este, Sur y Central (48 min), porque no existe Norte → Central. |
+| 3) Centro sin salida | Centro Norte y Centro Puerto | *No existe un recorrido que visite todos los centros y vuelva al depósito*: desde Puerto no sale ninguna conexión. |
+| 4) Conexión cortada | Se deshabilita Norte → Este y se repite el caso 1 | Central → Oeste → Este → Norte → Central, **54 min**. La tabla de tiempos se recalcula: 2 preparaciones en total. |
+| 5) Máximo de la consigna | Los 8 centros de la red de la sección 6.5 | **76 min**. Completa 60 recorridos de los 40.320 posibles (8!), gracias a 9.395 podas por cota. |
+| 6) Reparto integrado | Bitácora con los pedidos #104, #107, #102, #108 y #110, los lotes #201 a #206 y V1 (30 kg) | **R1:** los 4 pedidos más urgentes van a 3 centros (#104 y #102 comparten la parada en Centro Este). Carga #201 + #202 + #205 (prioridad 140). Recorrido de **52 min**. Despachado. **R2:** #110 va a Centro Puerto, que no tiene salida. No se despacha y no cambia nada. |
+
 ---
 
 ## 6. Datos de ejemplo cargados
@@ -341,6 +359,21 @@ Contraejemplo de Greedy (capacidad 50 kg):
 - **Lotes que llegan entre el viaje 2 y el 3:** #207 (10 kg, prioridad 50), #208 (12 kg, prioridad 35) y #209 (9 kg, prioridad 40).
 - **Evento de red:** se deshabilita Centro Norte → Centro Este antes del viaje 3.
 
+### 6.5 Red de 8 centros (B1)
+
+Se arma en `crearRedParaEntregas()`: Depósito Central y 8 centros (Norte, Sur, Este, Oeste, Puerto, Río, Plaza y Estación), con 16 conexiones de **doble mano** (mismo tiempo en los dos sentidos). Es el máximo de centros que admite B1.
+
+| Conexión | Tiempo | Conexión | Tiempo |
+|---|---|---|---|
+| Depósito Central – Centro Norte | 10 min | Centro Este – Centro Sur | 14 min |
+| Depósito Central – Centro Oeste | 15 min | Centro Sur – Centro Puerto | 9 min |
+| Depósito Central – Centro Plaza | 7 min | Centro Sur – Centro Oeste | 16 min |
+| Depósito Central – Centro Estación | 12 min | Centro Sur – Centro Estación | 10 min |
+| Centro Norte – Centro Este | 8 min | Centro Oeste – Centro Estación | 8 min |
+| Centro Norte – Centro Plaza | 9 min | Centro Oeste – Centro Plaza | 11 min |
+| Centro Norte – Centro Río | 18 min | Centro Río – Centro Puerto | 7 min |
+| Centro Este – Centro Puerto | 11 min | Centro Este – Centro Río | 6 min |
+
 ---
 
 ## 7. Algoritmos utilizados
@@ -435,6 +468,23 @@ La red ([`RedVial`](src/main/java/logistica/modelo/RedVial.java)) es un grafo di
 - **Verificación:** las pruebas comparan las rutas contra una enumeración independiente por BFS en 60 redes aleatorias, y la ruta más rápida sin restricciones contra Dijkstra.
 - `SistemaLogistica.rutasAlternativas(origen, destino, tiempoMaximo, prohibidas)` sólo consulta: respeta las conexiones deshabilitadas y no modifica la red.
 
+### 7.7 B1: Recorrido con múltiples entregas (Backtracking)
+
+[`RecorridoEntregas.java`](src/main/java/logistica/algoritmos/backtracking/RecorridoEntregas.java) · [`ResultadoRecorrido.java`](src/main/java/logistica/resultado/ResultadoRecorrido.java)
+
+- **Tiempos entre paradas:** se leen de la tabla de Floyd-Warshall (A1), que ya tiene el tiempo mínimo entre cada par de ubicaciones. Por eso un trayecto entre dos paradas puede atravesar otras ubicaciones, incluso otro centro seleccionado, sin que ese centro cuente como una parada más. Desde el sistema se reutiliza la tabla que ya está calculada.
+- **Árbol de decisiones:** una solución parcial es el orden de los centros visitados hasta ahora y su tiempo acumulado. En cada paso se prueba, uno por uno, cada centro que todavía no se visitó. Se marca en `visitado`, se llama de nuevo a `explorar` y, al volver, se desmarca.
+- **Caso base:** cuando ya se visitaron todos los centros, se suma la vuelta al depósito y se compara con el mejor recorrido encontrado.
+- **Podas:**
+  - **Por cota (ramificación y poda):** si el tiempo acumulado ya iguala o supera al mejor recorrido completo, la rama se descarta. Es válido porque los tiempos son positivos: agregar paradas sólo puede sumar tiempo.
+  - **Sin conexión:** se descarta el tramo cuando no existe camino entre dos paradas, o de la última parada al depósito.
+- **Empates:** se compara con `<` estricto, así que se conserva el primer recorrido encontrado. Los centros se prueban en el orden en que se pidieron.
+- **Por qué backtracking:** elegir siempre el centro más cercano (Greedy) no garantiza el menor tiempo total. Para asegurar el óptimo hay que considerar todos los órdenes, y la poda evita completar la mayoría.
+- **Complejidad:** en el peor caso O(k!) recorridos para `k` centros, y la preparación de la tabla cuesta O(n³). La consigna limita a 8 centros (8! = 40.320 órdenes). En la demo de 8 centros, la poda deja 60 recorridos completos. La memoria es O(k²) para los tiempos entre paradas más O(k) de pila.
+- **Validaciones:** entre 1 y 8 centros, sin centros repetidos, el depósito no puede ser un centro y todas las ubicaciones tienen que existir en la red. Si la tabla de tiempos es vieja (la red cambió), lanza `IllegalStateException`.
+- **Verificación:** las pruebas comparan el resultado contra una fuerza bruta independiente, que prueba todas las permutaciones con tiempos calculados con Dijkstra, en 150 redes aleatorias y en un grafo completo de 8 centros.
+- Devuelve un `ResultadoRecorrido` con el orden de visita, cada tramo con su camino, el camino completo, el tiempo total y los contadores (nodos explorados, recorridos completos, podas por cota y sin conexión).
+
 ---
 
 ## 8. Integración de las funcionalidades
@@ -456,7 +506,9 @@ La integración se hace en el paquete `logistica.sistema`, **sin modificar los a
 | `prepararConsultas()` | A1 | `FloydWarshall` |
 | `consultarRuta(origen, destino)` | A1 | `TablaRutas`. La prepara sólo si no existe o si la red cambió |
 | `rutasAlternativas(origen, destino, tiempoMaximo, prohibidas)` | B3 | `RutasAlternativas`. Sólo consulta |
+| `recorridoEntregas(deposito, centros)` | B1 | `RecorridoEntregas` con la tabla de A1, que se reutiliza si sigue vigente. Sólo consulta |
 | `planificarViaje(idVehiculo)` | F1 → F3 → F2 | Las tres anteriores, encadenadas |
+| `planificarReparto(idVehiculo, cantidadPedidos)` | F1 → F3 → B1 | Un viaje que atiende varios pedidos (ver [sección 8.4](#84-flujo-de-un-reparto-planificarreparto)) |
 
 Todas tienen una variante con `conTraza`, salvo `consultarRuta`, que sólo lee la tabla. `planificarViaje` sigue usando Dijkstra, porque F2 pide mostrar sus decisiones.
 
@@ -492,15 +544,25 @@ flowchart TD
 
 Armar la carga o calcular la ruta por separado (`armarCarga`, `rutaMasRapida`) sólo consulta: no cambia el stock ni los pedidos.
 
-### 8.4 `BitacoraViajes`: presentación
+### 8.4 Flujo de un reparto: `planificarReparto`
+
+Es un viaje con varias entregas. Sigue el mismo esquema que `planificarViaje`, pero el paso de la ruta lo resuelve B1:
+
+1. **F1:** se toman, en orden de prioridad, hasta `cantidadPedidos` pedidos. Los pedidos con el mismo destino comparten la parada. Se saltean los que agregarían un noveno centro (B1 admite 8) y los que tienen como destino el propio depósito del vehículo, porque no son una parada.
+2. **F3:** se eligen los lotes del stock de **mayor prioridad total** que entran en el vehículo.
+3. **B1:** se calcula el orden de visita de los centros con el **menor tiempo total**, saliendo del depósito del vehículo y volviendo a él.
+4. **Despacho atómico:** si los tres pasos salen bien, los pedidos dejan de estar pendientes y los lotes salen del stock. Si alguno falla (no hay pedidos, ningún lote entra o no existe un recorrido), **no se modifica nada** y el `ResultadoReparto` informa el motivo.
+
+### 8.5 `BitacoraViajes`: presentación
 
 [`BitacoraViajes.java`](src/main/java/logistica/sistema/BitacoraViajes.java) sólo se ocupa de mostrar. La lógica está en `SistemaLogistica`.
 - `presentar(...)`: objetivo del programa y estado inicial (vehículos, pedidos y stock).
 - `viaje(id[, conTraza])`: planifica el viaje y lo muestra en tres pasos, con el motivo de cada decisión.
+- `reparto(id, cantidadPedidos[, conTraza])`: planifica el reparto y lo muestra en tres pasos: los pedidos atendidos, la carga y el orden de visita con cada tramo, los contadores de la búsqueda y, con traza, las decisiones de B1.
 - `evento(...)`: registra cambios en el escenario entre viajes.
-- `resumen()`: tabla de la jornada con totales de tiempo y prioridad entregada.
+- `resumen()`: tabla de la jornada con totales de tiempo y prioridad entregada. Los repartos aparecen como filas `R1`, `R2`, …
 
-Los algoritmos escriben su traza con `System.out`. Para mostrarla dentro del paso `[3/3]` sin modificarlos, la bitácora redirige temporalmente la salida a un buffer mientras corre el viaje y después la imprime indentada.
+Los algoritmos escriben su traza con `System.out`. Para mostrarla dentro del paso `[3/3]` (de un viaje o de un reparto) sin modificarlos, la bitácora redirige temporalmente la salida a un buffer mientras corre el viaje y después la imprime indentada.
 
 ---
 
@@ -515,9 +577,10 @@ Las pruebas no usan JUnit: cada clase tiene un `main` que corre sus casos, impri
 | [`PruebasCargas`](src/test/java/logistica/PruebasCargas.java) | Casos borde, optimalidad (contraejemplo de Greedy, ejemplo de la clase), validaciones, **200 casos aleatorios comparados contra fuerza bruta** y volumen con 1.000 lotes y capacidad de 10.000 kg | 23 |
 | [`PruebasConsultasRutas`](src/test/java/logistica/PruebasConsultasRutas.java) | Tiempos y recorridos, grafo de la clase, casos borde, tabla vieja tras cambios en la red, cantidad de preparaciones desde la fachada, **200 redes aleatorias comparadas contra Dijkstra en todos los pares** y volumen con 500 ubicaciones | 41 |
 | [`PruebasRutasAlternativas`](src/test/java/logistica/PruebasRutasAlternativas.java) | Rutas y tiempos, tiempo máximo (incluido el límite exacto), ubicaciones prohibidas, ciclos sin repetir ubicaciones, contadores de la búsqueda, validaciones, conexiones deshabilitadas, **60 redes aleatorias comparadas contra una enumeración por BFS y contra Dijkstra** y volumen con un grafo completo de 9 ubicaciones (13.700 rutas) | 54 |
+| [`PruebasRecorridoEntregas`](src/test/java/logistica/PruebasRecorridoEntregas.java) | Orden y tiempo óptimos, tramos que atraviesan otras ubicaciones (incluso otro centro), empates, centros sin salida o aislados, podas y contadores, que con y sin traza dé lo mismo, validaciones (incluido el máximo de 8 centros y la tabla vieja), uso desde la fachada, repartos despachados y no despachados, **150 redes aleatorias comparadas contra fuerza bruta con tiempos de Dijkstra** y volumen con un grafo completo de 8 centros | 77 |
 | [`PruebasSistema`](src/test/java/logistica/PruebasSistema.java) | Vehículo, carga y validación de datos, F1/F2/F3 desde la fachada, viajes encadenados y viajes que no se despachan (sin pedidos, sin carga, sin ruta) | 57 |
 
-Estado actual: **224/224 OK**.
+Estado actual: **301/301 OK**.
 
 ---
 
@@ -533,7 +596,7 @@ Estado actual: **224/224 OK**.
 
 ## 11. Limitaciones y trabajo futuro
 
-- **Una ruta por viaje:** cada viaje atiende un único pedido y calcula la ruta origen → destino, como pide F2. El orden óptimo de visita de varias paradas corresponde a la funcionalidad B1 de la segunda etapa.
+- **Viajes y repartos:** `planificarViaje` atiende un único pedido con la ruta origen → destino, como pide F2. Para varias entregas está `planificarReparto` (B1), limitado a 8 centros por recorrido, como pide la consigna. Más centros harían crecer el tiempo de la búsqueda de forma factorial.
 - **Sin persistencia:** los datos se cargan en código y no hay lectura de archivos.
 - **Sin interfaz gráfica:** el programa corre sólo por consola. `docs/integracion.md` propone una interfaz en Swing como agregado opcional, pero todavía no está implementada.
-- **Segunda etapa:** B3 está implementada en `algoritmos/backtracking/`. El modelo (con `Vehiculo` y la fachada) sigue preparado para sumar asignación de vehículos, múltiples entregas y lotes por vehículo.
+- **Segunda etapa:** A1 está en `algoritmos/dinamica/`, y B1 y B3 en `algoritmos/backtracking/`. El modelo (con `Vehiculo` y la fachada) sigue preparado para sumar asignación de vehículos y lotes por vehículo.
