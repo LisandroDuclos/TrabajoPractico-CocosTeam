@@ -3,6 +3,7 @@ package logistica.sistema;
 import java.util.ArrayList;
 import java.util.List;
 
+import logistica.algoritmos.backtracking.RutasAlternativas;
 import logistica.algoritmos.dinamica.FloydWarshall;
 import logistica.algoritmos.dinamica.SeleccionCargas;
 import logistica.algoritmos.dyc.BusquedaBinaria;
@@ -18,6 +19,7 @@ import logistica.resultado.ResultadoCarga;
 import logistica.resultado.ResultadoConsultaRuta;
 import logistica.resultado.ResultadoOrdenamiento;
 import logistica.resultado.ResultadoRuta;
+import logistica.resultado.ResultadoRutasAlternativas;
 import logistica.resultado.ResultadoViaje;
 import logistica.resultado.TablaRutas;
 
@@ -180,6 +182,15 @@ public class SistemaLogistica {
 
     public int getPreparaciones() { return preparaciones; }
 
+    public ResultadoRutasAlternativas rutasAlternativas(String origen, String destino,
+                                                        int tiempoMaximo, String[] prohibidas) {
+        return rutasAlternativas(origen, destino, tiempoMaximo, prohibidas, false);
+    }
+
+    public ResultadoRutasAlternativas rutasAlternativas(String origen, String destino, int tiempoMaximo,
+                                                        String[] prohibidas, boolean conTraza) {
+        return RutasAlternativas.buscar(red, origen, destino, tiempoMaximo, prohibidas, conTraza);
+    }
     // Integración: un viaje encadena F1 -> F3 -> F2
 
     public ResultadoViaje planificarViaje(int idVehiculo) {

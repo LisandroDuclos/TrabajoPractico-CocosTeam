@@ -32,6 +32,7 @@ Todo el desarrollo del proyecto está realizado en [Informe](https://docs.google
 | F2 | Ruta más rápida entre dos ubicaciones de la red vial, con conexiones que se pueden deshabilitar | Greedy | `Dijkstra`, `MinHeap` |
 | F3 | Selección de los lotes de mayor prioridad total que entran en un vehículo | Programación Dinámica | `SeleccionCargas` |
 | A1 | Consultas del tiempo mínimo y el recorrido entre cualquier par de ubicaciones, sin repetir el cálculo | Programación Dinámica | `FloydWarshall`, `TablaRutas` |
+| B3 | Todas las rutas entre un origen y un destino que no superen un tiempo máximo, no repitan ubicaciones ni pasen por ubicaciones prohibidas; indica la de menor tiempo | Backtracking | `RutasAlternativas`, `ResultadoRutasAlternativas` |
 | Integración | Planificación de un viaje completo que encadena F1 → F3 → F2 | — | `SistemaLogistica`, `BitacoraViajes` |
 
 ---
@@ -64,12 +65,13 @@ TrabajoPractico-CocosTeam/
 │   │   │   ├── dyc/                F1: MergeSort, BusquedaBinaria
 │   │   │   ├── greedy/             F2: Dijkstra, MinHeap
 │   │   │   ├── dinamica/           F3: SeleccionCargas (mochila 0/1) · A1: FloydWarshall
-│   │   │   └── backtracking/       Reservado para la segunda etapa (vacío)
+│   │   │   └── backtracking/       B3: RutasAlternativas
 │   │   ├── resultado/              Objetos que devuelven los algoritmos (con métricas)
 │   │   │   ├── ResultadoOrdenamiento, ResultadoBusqueda   (F1)
 │   │   │   ├── ResultadoRuta                              (F2)
 │   │   │   ├── ResultadoCarga                             (F3)
 │   │   │   ├── TablaRutas, ResultadoConsultaRuta          (A1)
+│   │   │   ├── ResultadoRutasAlternativas                 (B3)
 │   │   │   └── ResultadoViaje                             (integración)
 │   │   └── sistema/
 │   │       ├── SistemaLogistica.java   Fachada: datos, validaciones y planificación de viajes
@@ -79,6 +81,7 @@ TrabajoPractico-CocosTeam/
 │       ├── PruebasRutas.java       F2
 │       ├── PruebasCargas.java      F3
 │       ├── PruebasConsultasRutas.java  A1
+│       ├── PruebasRutasAlternativas.java  B3
 │       └── PruebasSistema.java     Integración
 └── .vscode/settings.json           sourcePaths y carpeta de salida (out/)
 ```
@@ -103,6 +106,7 @@ java -cp out logistica.PruebasPedidos
 java -cp out logistica.PruebasRutas
 java -cp out logistica.PruebasCargas
 java -cp out logistica.PruebasConsultasRutas
+java -cp out logistica.PruebasRutasAlternativas
 java -cp out logistica.PruebasSistema
 ```
 
@@ -132,6 +136,7 @@ public static void main(String[] args) {
     demoRutas();           // F2
     demoCargas();          // F3
     demoConsultasRutas();  // A1
+    demoRutasAlternativas(); // B3
     demoIntegrada();       // F1 -> F3 -> F2
 }
 ```
@@ -222,6 +227,18 @@ Un vehículo de 30 kg (V1) que sale del Depósito Central hace tres viajes. En c
 | Consultas A1 | Tiempo desde Depósito Central hasta los destinos pendientes, con la red ya cortada | #108 → Centro Oeste: **15 min**. #110 → Centro Puerto: **34 min** por Central → Oeste → Sur → Puerto. |
 
 La bitácora muestra cada viaje en tres pasos (`[1/3]`, `[2/3]`, `[3/3]`) y explica la decisión de cada uno, por ejemplo qué regla de desempate eligió el pedido.
+
+### 5.6 B3: Rutas alternativas con restricciones (`demoRutasAlternativas`)
+
+Usa una red propia (`crearRedParaAlternativas`) con conexiones en ambos sentidos y tiempos distintos, para que existan varias cadenas y ciclos posibles. Todas las búsquedas son de Depósito Central a Centro Puerto.
+
+| Escenario | Qué se hace | Resultado esperado |
+|---|---|---|
+| 1) Tiempo holgado, con traza | Máximo 80 min, sin prohibidas | **6 rutas**. La de menor tiempo es Central → Norte → Este → Sur → Puerto, **30 min**. 18 nodos explorados y 15 podas por ubicación repetida. |
+| 2) Tiempo ajustado | Máximo 45 min | **3 rutas** (30, 38 y 34 min). Las otras tres superaban el máximo: 4 podas por tiempo. |
+| 3) Ubicación prohibida | Máximo 80 min, sin pasar por Centro Este | **2 rutas**. La más rápida es Central → Oeste → Sur → Puerto, **34 min**. |
+| 4) Sin rutas | Máximo 20 min | *No existe ninguna ruta que cumpla las condiciones*. |
+| 5) Conexión cortada | Se deshabilita Este → Sur y se busca con máximo 80 min | **5 rutas**. La más rápida pasa a ser Central → Oeste → Sur → Puerto, **34 min**. |
 
 ---
 
@@ -403,6 +420,21 @@ La red ([`RedVial`](src/main/java/logistica/modelo/RedVial.java)) es un grafo di
 - **Vigencia:** `RedVial` tiene un contador `version` que aumenta con cada cambio. Una tabla vieja no responde: lanza `IllegalStateException`. `SistemaLogistica` lo detecta y recalcula en la consulta siguiente, también si el cambio se hizo directo sobre la red.
 - `TablaRutas.consultar(origen, destino)` devuelve un `ResultadoConsultaRuta` con el tiempo y el recorrido, o informa que no existe conexión.
 
+### 7.6 B3: Rutas alternativas (Backtracking)
+
+[`RutasAlternativas.java`](src/main/java/logistica/algoritmos/backtracking/RutasAlternativas.java) · [`ResultadoRutasAlternativas.java`](src/main/java/logistica/resultado/ResultadoRutasAlternativas.java)
+
+- **Árbol de decisiones:** una solución parcial es la ruta armada hasta ahora y su tiempo acumulado. En cada paso se prueba, una por una, cada conexión habilitada que sale de la última ubicación.
+- **Elegir, explorar, deshacer:** se marca la ubicación en `enRuta`, se llama de nuevo a `explorar` y, al volver, se desmarca. Ese retroceso es lo que permite que otra rama use la misma ubicación en otra ruta.
+- **Caso base:** al llegar al destino se guarda una copia de la ruta y no se sigue, porque seguir obligaría a repetirlo.
+- **Podas:** se descarta una rama antes de explorarla si la ubicación siguiente está **prohibida**, si **ya está en la ruta** o si el tiempo acumulado **supera el máximo**. La última es válida porque los tiempos son positivos: al extender una ruta el tiempo sólo puede crecer.
+- **Contadores:** nodos explorados y podas por cada causa. Se muestran en el resultado y sirven para comparar con y sin restricciones.
+- **Mejor ruta:** se compara con `<` estricto, así que ante un empate de tiempo se conserva la primera encontrada.
+- **Por qué backtracking:** B3 pide *todas* las rutas que cumplan las condiciones, no una sola óptima. Dijkstra (Greedy) fija cada ubicación una vez y devuelve una sola ruta. Floyd-Warshall (PD) guarda un único camino por par. Ninguno enumera alternativas.
+- **Complejidad:** en el peor caso, un grafo completo de `n` ubicaciones tiene O(n!) rutas sin repetir ubicaciones, y copiar cada una cuesta O(n). Por eso la consigna pide redes pequeñas. La memoria es O(n) de pila más las rutas encontradas.
+- **Verificación:** las pruebas comparan las rutas contra una enumeración independiente por BFS en 60 redes aleatorias, y la ruta más rápida sin restricciones contra Dijkstra.
+- `SistemaLogistica.rutasAlternativas(origen, destino, tiempoMaximo, prohibidas)` sólo consulta: respeta las conexiones deshabilitadas y no modifica la red.
+
 ---
 
 ## 8. Integración de las funcionalidades
@@ -423,6 +455,7 @@ La integración se hace en el paquete `logistica.sistema`, **sin modificar los a
 | `armarCarga(idVehiculo)` | F3 | `SeleccionCargas` con la capacidad del vehículo y el stock actual |
 | `prepararConsultas()` | A1 | `FloydWarshall` |
 | `consultarRuta(origen, destino)` | A1 | `TablaRutas`. La prepara sólo si no existe o si la red cambió |
+| `rutasAlternativas(origen, destino, tiempoMaximo, prohibidas)` | B3 | `RutasAlternativas`. Sólo consulta |
 | `planificarViaje(idVehiculo)` | F1 → F3 → F2 | Las tres anteriores, encadenadas |
 
 Todas tienen una variante con `conTraza`, salvo `consultarRuta`, que sólo lee la tabla. `planificarViaje` sigue usando Dijkstra, porque F2 pide mostrar sus decisiones.
@@ -481,9 +514,10 @@ Las pruebas no usan JUnit: cada clase tiene un `main` que corre sus casos, impri
 | [`PruebasRutas`](src/test/java/logistica/PruebasRutas.java) | Min-heap (10.000 inserciones en orden), rutas (normal, origen = destino, sentido, sin salida, repetibilidad, con y sin traza dan lo mismo), deshabilitar y habilitar conexiones, validaciones y volumen con 100.000 ubicaciones | 31 |
 | [`PruebasCargas`](src/test/java/logistica/PruebasCargas.java) | Casos borde, optimalidad (contraejemplo de Greedy, ejemplo de la clase), validaciones, **200 casos aleatorios comparados contra fuerza bruta** y volumen con 1.000 lotes y capacidad de 10.000 kg | 23 |
 | [`PruebasConsultasRutas`](src/test/java/logistica/PruebasConsultasRutas.java) | Tiempos y recorridos, grafo de la clase, casos borde, tabla vieja tras cambios en la red, cantidad de preparaciones desde la fachada, **200 redes aleatorias comparadas contra Dijkstra en todos los pares** y volumen con 500 ubicaciones | 41 |
+| [`PruebasRutasAlternativas`](src/test/java/logistica/PruebasRutasAlternativas.java) | Rutas y tiempos, tiempo máximo (incluido el límite exacto), ubicaciones prohibidas, ciclos sin repetir ubicaciones, contadores de la búsqueda, validaciones, conexiones deshabilitadas, **60 redes aleatorias comparadas contra una enumeración por BFS y contra Dijkstra** y volumen con un grafo completo de 9 ubicaciones (13.700 rutas) | 54 |
 | [`PruebasSistema`](src/test/java/logistica/PruebasSistema.java) | Vehículo, carga y validación de datos, F1/F2/F3 desde la fachada, viajes encadenados y viajes que no se despachan (sin pedidos, sin carga, sin ruta) | 57 |
 
-Estado actual: **170/170 OK**.
+Estado actual: **224/224 OK**.
 
 ---
 
@@ -502,4 +536,4 @@ Estado actual: **170/170 OK**.
 - **Una ruta por viaje:** cada viaje atiende un único pedido y calcula la ruta origen → destino, como pide F2. El orden óptimo de visita de varias paradas corresponde a la funcionalidad B1 de la segunda etapa.
 - **Sin persistencia:** los datos se cargan en código y no hay lectura de archivos.
 - **Sin interfaz gráfica:** el programa corre sólo por consola. `docs/integracion.md` propone una interfaz en Swing como agregado opcional, pero todavía no está implementada.
-- **Segunda etapa:** el paquete `algoritmos/backtracking/` está reservado, y el modelo (con `Vehiculo` y la fachada) ya está preparado para sumar asignación de vehículos, múltiples entregas y lotes por vehículo.
+- **Segunda etapa:** B3 está implementada en `algoritmos/backtracking/`. El modelo (con `Vehiculo` y la fachada) sigue preparado para sumar asignación de vehículos, múltiples entregas y lotes por vehículo.

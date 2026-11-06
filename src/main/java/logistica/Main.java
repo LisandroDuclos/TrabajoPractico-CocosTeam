@@ -12,6 +12,7 @@ import logistica.modelo.Pedido.Criterio;
 import logistica.modelo.RedVial;
 import logistica.modelo.Vehiculo;
 import logistica.resultado.ResultadoOrdenamiento;
+import logistica.resultado.ResultadoRutasAlternativas;
 import logistica.sistema.BitacoraViajes;
 import logistica.sistema.SistemaLogistica;
 
@@ -22,6 +23,7 @@ public class Main {
         demoRutas();
         demoCargas();
         demoConsultasRutas();
+        demoRutasAlternativas();
         demoIntegrada();
     }
 
@@ -180,6 +182,63 @@ public class Main {
         System.out.println(sistema.consultarRuta("Depósito Central", "Depósito Sur"));
         System.out.println(sistema.consultarRuta("Centro Norte", "Centro Este"));
         System.out.println("Preparaciones realizadas: " + sistema.getPreparaciones());
+    }
+
+    //  Funcionalidad B3
+
+    private static void demoRutasAlternativas() {
+        titulo("FUNCIONALIDAD B3 - Rutas alternativas con restricciones (Backtracking)");
+
+        SistemaLogistica sistema = new SistemaLogistica(crearRedParaAlternativas());
+        String[] ninguna = {};
+
+        // 1) Con tiempo holgado aparecen todas las rutas posibles, incluida la más rápida.
+        subtitulo("1) Depósito Central a Centro Puerto, máximo 80 min, sin prohibidas (con traza)");
+        System.out.println(sistema.rutasAlternativas("Depósito Central", "Centro Puerto", 80, ninguna, true));
+
+        // 2) El tiempo máximo deja afuera las rutas largas.
+        subtitulo("2) Mismo viaje con máximo 45 min");
+        System.out.println(sistema.rutasAlternativas("Depósito Central", "Centro Puerto", 45, ninguna));
+
+        // 3) Una ubicación prohibida descarta todas las rutas que pasan por ella.
+        subtitulo("3) Máximo 80 min, sin pasar por Centro Este");
+        System.out.println(sistema.rutasAlternativas("Depósito Central", "Centro Puerto", 80,
+                new String[]{"Centro Este"}));
+
+        // 4) Si las condiciones no dejan ninguna ruta, se informa.
+        subtitulo("4) Máximo 20 min: no alcanza para ninguna ruta");
+        System.out.println(sistema.rutasAlternativas("Depósito Central", "Centro Puerto", 20, ninguna));
+
+        // 5) Si la red cambia (conexión deshabilitada), la búsqueda la respeta.
+        subtitulo("5) Se corta Centro Este -> Depósito Sur y se vuelve a buscar (máximo 80 min)");
+        sistema.deshabilitarConexion("Centro Este", "Depósito Sur");
+        System.out.println(sistema.rutasAlternativas("Depósito Central", "Centro Puerto", 80, ninguna));
+    }
+
+    /** Red con conexiones en ambos sentidos (tiempos distintos): permite cadenas alternativas y ciclos. */
+    private static RedVial crearRedParaAlternativas() {
+        RedVial red = new RedVial();
+        red.agregarUbicacion("Depósito Central");
+        red.agregarUbicacion("Depósito Sur");
+        red.agregarUbicacion("Centro Norte");
+        red.agregarUbicacion("Centro Este");
+        red.agregarUbicacion("Centro Oeste");
+        red.agregarUbicacion("Centro Puerto");
+
+        red.agregarConexion("Depósito Central", "Centro Norte", 10);
+        red.agregarConexion("Centro Norte", "Depósito Central", 12);
+        red.agregarConexion("Depósito Central", "Centro Oeste", 15);
+        red.agregarConexion("Centro Oeste", "Depósito Central", 15);
+        red.agregarConexion("Centro Norte", "Centro Este", 8);
+        red.agregarConexion("Centro Este", "Centro Norte", 9);
+        red.agregarConexion("Centro Norte", "Depósito Sur", 30);
+        red.agregarConexion("Centro Oeste", "Depósito Sur", 12);
+        red.agregarConexion("Depósito Sur", "Centro Oeste", 14);
+        red.agregarConexion("Centro Este", "Depósito Sur", 5);
+        red.agregarConexion("Depósito Sur", "Centro Este", 6);
+        red.agregarConexion("Depósito Sur", "Centro Puerto", 7);
+        red.agregarConexion("Centro Este", "Centro Puerto", 20);
+        return red;
     }
 
     //  Integración
