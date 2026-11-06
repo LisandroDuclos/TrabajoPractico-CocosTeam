@@ -11,6 +11,9 @@ import logistica.modelo.Pedido;
 import logistica.modelo.Ubicacion;
 import logistica.modelo.Vehiculo;
 import logistica.resultado.ResultadoCarga;
+import logistica.resultado.ResultadoConsultaRuta;
+import logistica.resultado.ResultadoRecorrido;
+import logistica.resultado.ResultadoReparto;
 import logistica.resultado.ResultadoRuta;
 import logistica.resultado.ResultadoViaje;
 
@@ -26,6 +29,7 @@ public class BitacoraViajes {
 
     private final SistemaLogistica sistema;
     private final List<ResultadoViaje> viajes = new ArrayList<>();
+    private final List<ResultadoReparto> repartos = new ArrayList<>();
 
     public BitacoraViajes(SistemaLogistica sistema) {
         this.sistema = sistema;
@@ -47,6 +51,8 @@ public class BitacoraViajes {
         System.out.println("  [3/3] Por dónde ir         -> F2, Greedy (Dijkstra)");
         System.out.println("Si los tres pasos salen bien, el viaje se despacha: el pedido deja de estar");
         System.out.println("pendiente y los lotes cargados salen del stock.");
+        System.out.println("Un reparto atiende varios pedidos en un mismo viaje: en el paso [3/3] decide");
+        System.out.println("el orden de visita de los centros con B1, Backtracking.");
 
         System.out.println();
         System.out.println("Estado inicial");
@@ -183,6 +189,102 @@ public class BitacoraViajes {
         }
     }
 
+    // Un reparto con varias entregas, paso a paso
+
+    public ResultadoReparto reparto(int idVehiculo, int cantidadPedidos) {
+        return reparto(idVehiculo, cantidadPedidos, false);
+    }
+
+    /** Planifica el reparto con el sistema y lo muestra. Con traza, agrega las decisiones del recorrido. */
+    public ResultadoReparto reparto(int idVehiculo, int cantidadPedidos, boolean conTraza) {
+        Lote[] stockAntes = sistema.getStock();
+
+        // La traza de B1 se imprime durante el cálculo: se captura para mostrarla en su paso.
+        ResultadoReparto reparto;
+        ByteArrayOutputStream buffer = new ByteArrayOutputStream();
+        PrintStream original = System.out;
+        System.setOut(new PrintStream(buffer, true, StandardCharsets.UTF_8));
+        try {
+            reparto = sistema.planificarReparto(idVehiculo, cantidadPedidos, conTraza);
+        } finally {
+            System.setOut(original);
+        }
+        String traza = buffer.toString(StandardCharsets.UTF_8);
+
+        repartos.add(reparto);
+        Vehiculo v = reparto.getVehiculo();
+
+        System.out.println();
+        System.out.println(LINEA);
+        System.out.println("REPARTO " + repartos.size() + " - Vehículo V" + v.getId() + " (" + v.getCapacidad()
+                + " kg, sale de " + v.getDeposito() + " y vuelve)");
+        System.out.println(LINEA);
+
+        pasoPedidosReparto(reparto.getPedidos());
+        pasoCarga(reparto.getCarga(), stockAntes, v);
+        pasoRecorrido(reparto.getRecorrido(), traza);
+
+        System.out.println();
+        if (reparto.isDespachado()) {
+            System.out.println(">> DESPACHADO. Quedan " + cantidad(sistema.getPedidosPendientes().length, "pedido pendiente", "pedidos pendientes")
+                    + " y " + cantidad(sistema.getStock().length, "lote", "lotes") + " en stock.");
+        } else {
+            System.out.println(">> NO SE DESPACHA: " + reparto.getMotivo() + ".");
+            System.out.println("   No se modificaron los pedidos pendientes ni el stock.");
+        }
+        return reparto;
+    }
+
+    private void pasoPedidosReparto(Pedido[] pedidos) {
+        System.out.println("[1/3] Qué pedidos atender?                 (F1 - Divide y Conquista)");
+        if (pedidos.length == 0) {
+            System.out.println("      No hay pedidos pendientes para repartir.");
+            return;
+        }
+        System.out.println(pedidos.length == 1 ? "      El pedido más urgente:"
+                : "      Los " + pedidos.length + " pedidos más urgentes, por prioridad:");
+        for (Pedido p : pedidos) {
+            System.out.println("        #" + p.getId() + " -> " + p.getCentroDestino() + "  (prioridad "
+                    + p.getPrioridad() + ", límite " + p.getFechaLimite() + ")");
+        }
+    }
+
+    private void pasoRecorrido(ResultadoRecorrido recorrido, String traza) {
+        System.out.println("[3/3] En qué orden visitar los centros?    (B1 - Backtracking)");
+        if (recorrido == null) {
+            System.out.println("      No se llegó a este paso.");
+            return;
+        }
+        System.out.println("      Paradas: " + cantidad(recorrido.getCentros().length, "centro", "centros")
+                + " (los pedidos con el mismo destino comparten la parada).");
+        if (recorrido.isExiste()) {
+            StringBuilder orden = new StringBuilder();
+            for (Ubicacion u : recorrido.getParadas()) {
+                if (orden.length() > 0) orden.append(" -> ");
+                orden.append(u);
+            }
+            System.out.println("      Orden: " + orden + "  (" + recorrido.getTiempoTotal() + " min)");
+            ResultadoConsultaRuta[] tramos = recorrido.getTramos();
+            for (int i = 0; i < tramos.length; i++) {
+                System.out.println("        " + (i + 1) + ") " + tramos[i]);
+            }
+        } else {
+            System.out.println("      No existe un recorrido que visite todos los centros y vuelva al depósito.");
+        }
+        System.out.println("      Búsqueda: " + recorrido.getNodosExplorados() + " nodos explorados, "
+                + recorrido.getRecorridosCompletos() + " recorridos completos, "
+                + recorrido.getPodasPorCota() + " podas por cota, "
+                + recorrido.getPodasSinConexion() + " sin conexión.");
+        if (!traza.isBlank()) {
+            System.out.println("      Decisiones del cálculo:");
+            for (String linea : traza.split("\\R")) {
+                if (!linea.isBlank()) {
+                    System.out.println("      | " + linea);
+                }
+            }
+        }
+    }
+
     // Resumen final
 
     public void resumen() {
@@ -212,8 +314,26 @@ public class BitacoraViajes {
                         pedido, destino, "-", "-", "-", "no despachado");
             }
         }
+        for (int i = 0; i < repartos.size(); i++) {
+            ResultadoReparto r = repartos.get(i);
+            String fila = "R" + (i + 1);
+            String pedidos = r.getPedidos().length == 0 ? "-" : r.getPedidos().length + " ped.";
+            String destino = r.getRecorrido() == null ? "-"
+                    : cantidad(r.getRecorrido().getCentros().length, "centro", "centros");
+            if (r.isDespachado()) {
+                despachados++;
+                minutos += r.getRecorrido().getTiempoTotal();
+                prioridad += r.getCarga().getPrioridadTotal();
+                System.out.printf("%-6s V%-8d %-7s %-14s %5d %5d %10d  %s%n", fila, r.getVehiculo().getId(),
+                        pedidos, destino, r.getRecorrido().getTiempoTotal(), r.getCarga().getPesoTotal(),
+                        r.getCarga().getPrioridadTotal(), "despachado");
+            } else {
+                System.out.printf("%-6s V%-8d %-7s %-14s %5s %5s %10s  %s%n", fila, r.getVehiculo().getId(),
+                        pedidos, destino, "-", "-", "-", "no despachado");
+            }
+        }
         System.out.println();
-        System.out.println("Viajes despachados: " + despachados + " de " + viajes.size()
+        System.out.println("Viajes despachados: " + despachados + " de " + (viajes.size() + repartos.size())
                 + " | Tiempo total de viaje: " + minutos + " min | Prioridad entregada: " + prioridad);
         imprimirPendientes("Pedidos pendientes: ");
         imprimirStock("Stock restante:     ");

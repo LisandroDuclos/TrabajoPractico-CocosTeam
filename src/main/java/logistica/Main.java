@@ -24,6 +24,7 @@ public class Main {
         demoCargas();
         demoConsultasRutas();
         demoRutasAlternativas();
+        demoRecorridoEntregas();
         demoIntegrada();
     }
 
@@ -239,6 +240,106 @@ public class Main {
         red.agregarConexion("Depósito Sur", "Centro Puerto", 7);
         red.agregarConexion("Centro Este", "Centro Puerto", 20);
         return red;
+    }
+
+    //  Funcionalidad B1
+
+    private static void demoRecorridoEntregas() {
+        titulo("FUNCIONALIDAD B1 - Recorrido con múltiples entregas (Backtracking)");
+
+        SistemaLogistica sistema = new SistemaLogistica(crearRedParaAlternativas());
+
+        // 1) Tres centros: se prueban los órdenes posibles y se podan los que ya no pueden mejorar.
+        subtitulo("1) Desde Depósito Central por Centro Norte, Centro Este y Centro Oeste (con traza)");
+        System.out.println(sistema.recorridoEntregas("Depósito Central",
+                new String[]{"Centro Norte", "Centro Este", "Centro Oeste"}, true));
+
+        // 2) En una red con sentidos únicos los tramos entre paradas atraviesan otras ubicaciones.
+        subtitulo("2) Red de ejemplo (sentidos únicos): Centro Norte y Centro Oeste");
+        SistemaLogistica sentidos = new SistemaLogistica(crearRedDeEjemplo());
+        System.out.println(sentidos.recorridoEntregas("Depósito Central",
+                new String[]{"Centro Norte", "Centro Oeste"}));
+
+        // 3) Desde Centro Puerto no sale ninguna conexión: no se puede volver al depósito.
+        subtitulo("3) Incluye Centro Puerto, que no tiene salida");
+        System.out.println(sistema.recorridoEntregas("Depósito Central",
+                new String[]{"Centro Norte", "Centro Puerto"}));
+
+        // 4) Si la red cambia, la tabla de tiempos se recalcula y el recorrido la respeta.
+        subtitulo("4) Se corta Centro Norte -> Centro Este y se repite el caso 1");
+        sistema.deshabilitarConexion("Centro Norte", "Centro Este");
+        System.out.println(sistema.recorridoEntregas("Depósito Central",
+                new String[]{"Centro Norte", "Centro Este", "Centro Oeste"}));
+        System.out.println("Preparaciones de la tabla de tiempos (A1): " + sistema.getPreparaciones());
+
+        // 5) El máximo de la consigna: sin podas habría que completar 8! = 40.320 recorridos.
+        subtitulo("5) Red de 8 centros: se visitan todos");
+        SistemaLogistica grande = new SistemaLogistica(crearRedParaEntregas());
+        String[] ocho = {"Centro Norte", "Centro Sur", "Centro Este", "Centro Oeste",
+                "Centro Puerto", "Centro Río", "Centro Plaza", "Centro Estación"};
+        System.out.println(grande.recorridoEntregas("Depósito Central", ocho));
+        System.out.println("Sin podas se completarían 40320 recorridos (8!).");
+
+        // 6) Integrado: un reparto atiende varios pedidos en un mismo viaje (F1 -> F3 -> B1).
+        subtitulo("6) Reparto integrado con varios pedidos");
+        SistemaLogistica reparto = new SistemaLogistica(crearRedParaAlternativas());
+        reparto.agregarPedido(new Pedido(104, "Centro Este",  LocalDate.of(2026, 11, 18), 5, 250));
+        reparto.agregarPedido(new Pedido(107, "Centro Norte", LocalDate.of(2026, 11, 20), 5, 300));
+        reparto.agregarPedido(new Pedido(102, "Centro Este",  LocalDate.of(2026, 11, 15), 4, 120));
+        reparto.agregarPedido(new Pedido(108, "Centro Oeste", LocalDate.of(2026, 11, 22), 4,  90));
+        reparto.agregarPedido(new Pedido(110, "Centro Puerto", LocalDate.of(2026, 11, 30), 1, 80));
+        reparto.agregarLote(new Lote(201,  8, 40));
+        reparto.agregarLote(new Lote(202, 12, 55));
+        reparto.agregarLote(new Lote(203,  5, 20));
+        reparto.agregarLote(new Lote(204, 15, 70));
+        reparto.agregarLote(new Lote(205, 10, 45));
+        reparto.agregarLote(new Lote(206,  6, 30));
+        reparto.agregarVehiculo(new Vehiculo(1, 30, "Depósito Central"));
+
+        BitacoraViajes bitacora = new BitacoraViajes(reparto);
+        bitacora.presentar(1);
+        // Los 4 más urgentes van a 3 centros: Centro Este recibe dos pedidos en una sola parada.
+        bitacora.reparto(1, 4, true);
+        // Queda #110 en Centro Puerto, que no tiene salida: no se despacha y no cambia nada.
+        bitacora.reparto(1, 4);
+        bitacora.resumen();
+    }
+
+    /** 8 centros con conexiones en ambos sentidos: el máximo de centros que admite B1. */
+    private static RedVial crearRedParaEntregas() {
+        RedVial red = new RedVial();
+        red.agregarUbicacion("Depósito Central");
+        red.agregarUbicacion("Centro Norte");
+        red.agregarUbicacion("Centro Sur");
+        red.agregarUbicacion("Centro Este");
+        red.agregarUbicacion("Centro Oeste");
+        red.agregarUbicacion("Centro Puerto");
+        red.agregarUbicacion("Centro Río");
+        red.agregarUbicacion("Centro Plaza");
+        red.agregarUbicacion("Centro Estación");
+
+        dobleMano(red, "Depósito Central", "Centro Norte", 10);
+        dobleMano(red, "Depósito Central", "Centro Oeste", 15);
+        dobleMano(red, "Depósito Central", "Centro Plaza", 7);
+        dobleMano(red, "Depósito Central", "Centro Estación", 12);
+        dobleMano(red, "Centro Norte", "Centro Este", 8);
+        dobleMano(red, "Centro Norte", "Centro Plaza", 9);
+        dobleMano(red, "Centro Norte", "Centro Río", 18);
+        dobleMano(red, "Centro Este", "Centro Puerto", 11);
+        dobleMano(red, "Centro Este", "Centro Río", 6);
+        dobleMano(red, "Centro Este", "Centro Sur", 14);
+        dobleMano(red, "Centro Sur", "Centro Puerto", 9);
+        dobleMano(red, "Centro Sur", "Centro Oeste", 16);
+        dobleMano(red, "Centro Sur", "Centro Estación", 10);
+        dobleMano(red, "Centro Oeste", "Centro Estación", 8);
+        dobleMano(red, "Centro Oeste", "Centro Plaza", 11);
+        dobleMano(red, "Centro Río", "Centro Puerto", 7);
+        return red;
+    }
+
+    private static void dobleMano(RedVial red, String a, String b, int tiempo) {
+        red.agregarConexion(a, b, tiempo);
+        red.agregarConexion(b, a, tiempo);
     }
 
     //  Integración

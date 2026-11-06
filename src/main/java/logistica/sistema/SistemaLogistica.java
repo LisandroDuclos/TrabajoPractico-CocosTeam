@@ -3,6 +3,7 @@ package logistica.sistema;
 import java.util.ArrayList;
 import java.util.List;
 
+import logistica.algoritmos.backtracking.RecorridoEntregas;
 import logistica.algoritmos.backtracking.RutasAlternativas;
 import logistica.algoritmos.dinamica.FloydWarshall;
 import logistica.algoritmos.dinamica.SeleccionCargas;
@@ -18,6 +19,8 @@ import logistica.resultado.ResultadoBusqueda;
 import logistica.resultado.ResultadoCarga;
 import logistica.resultado.ResultadoConsultaRuta;
 import logistica.resultado.ResultadoOrdenamiento;
+import logistica.resultado.ResultadoRecorrido;
+import logistica.resultado.ResultadoReparto;
 import logistica.resultado.ResultadoRuta;
 import logistica.resultado.ResultadoRutasAlternativas;
 import logistica.resultado.ResultadoViaje;
@@ -174,10 +177,15 @@ public class SistemaLogistica {
      * si todavía no existe o si la red cambió desde la última preparación.
      */
     public ResultadoConsultaRuta consultarRuta(String origen, String destino) {
+        return tablaVigente().consultar(origen, destino);
+    }
+
+    /** La tabla de A1, preparada sólo si todavía no existe o si la red cambió. */
+    private TablaRutas tablaVigente() {
         if (tablaRutas == null || !tablaRutas.isVigente()) {
             prepararConsultas();
         }
-        return tablaRutas.consultar(origen, destino);
+        return tablaRutas;
     }
 
     public int getPreparaciones() { return preparaciones; }
@@ -191,6 +199,22 @@ public class SistemaLogistica {
                                                         String[] prohibidas, boolean conTraza) {
         return RutasAlternativas.buscar(red, origen, destino, tiempoMaximo, prohibidas, conTraza);
     }
+
+    // Funcionalidad B1: recorrido con múltiples entregas (Backtracking)
+
+    public ResultadoRecorrido recorridoEntregas(String deposito, String[] centros) {
+        return recorridoEntregas(deposito, centros, false);
+    }
+
+    /**
+     * Orden de visita de los centros que da el menor tiempo total, saliendo del depósito y
+     * volviendo a él. Los tiempos entre paradas salen de la tabla de A1, que se reutiliza si
+     * sigue vigente. Sólo consulta: no modifica la red.
+     */
+    public ResultadoRecorrido recorridoEntregas(String deposito, String[] centros, boolean conTraza) {
+        return RecorridoEntregas.calcular(red, tablaVigente(), deposito, centros, conTraza);
+    }
+
     // Integración: un viaje encadena F1 -> F3 -> F2
 
     public ResultadoViaje planificarViaje(int idVehiculo) {
@@ -231,6 +255,98 @@ public class SistemaLogistica {
             quitarLote(lote.getId());
         }
         return ResultadoViaje.despachado(vehiculo, pedido, carga, ruta);
+    }
+
+    // Integración: un reparto con varias entregas encadena F1 -> F3 -> B1
+
+    public ResultadoReparto planificarReparto(int idVehiculo, int cantidadPedidos) {
+        return planificarReparto(idVehiculo, cantidadPedidos, false);
+    }
+
+    /**
+     * Planifica y despacha un reparto del vehículo que atiende varios pedidos en un mismo viaje:
+     *   1. F1 toma, en orden de prioridad, hasta 'cantidadPedidos' pedidos. Los pedidos con el
+     *      mismo destino comparten la parada, y no se superan los centros que admite B1.
+     *   2. F3 elige los lotes del stock con mayor prioridad total que entran en el vehículo.
+     *   3. B1 decide en qué orden visitar los centros para tardar lo menos posible,
+     *      saliendo del depósito del vehículo y volviendo a él.
+     * Si los tres pasos salen bien, los pedidos dejan de estar pendientes y los lotes cargados
+     * salen del stock. Si alguno falla, no se modifica nada y se informa el motivo.
+     * La traza muestra sólo las decisiones del recorrido (B1).
+     */
+    public ResultadoReparto planificarReparto(int idVehiculo, int cantidadPedidos, boolean conTraza) {
+        Vehiculo vehiculo = getVehiculo(idVehiculo);
+        if (cantidadPedidos < 1) {
+            throw new IllegalArgumentException("El reparto tiene que atender al menos un pedido: " + cantidadPedidos);
+        }
+
+        Pedido[] elegidos = pedidosDelReparto(vehiculo, cantidadPedidos);
+        if (elegidos.length == 0) {
+            return ResultadoReparto.noDespachado(vehiculo, elegidos, null, null,
+                    "No hay pedidos pendientes para repartir");
+        }
+
+        ResultadoCarga carga = armarCarga(idVehiculo);
+        if (carga.isVacia()) {
+            return ResultadoReparto.noDespachado(vehiculo, elegidos, carga, null,
+                    "Ningún lote del stock entra en el vehículo");
+        }
+
+        ResultadoRecorrido recorrido = recorridoEntregas(vehiculo.getDeposito(), centrosDe(elegidos), conTraza);
+        if (!recorrido.isExiste()) {
+            return ResultadoReparto.noDespachado(vehiculo, elegidos, carga, recorrido,
+                    "No hay un recorrido que visite todos los centros y vuelva al depósito");
+        }
+
+        for (Pedido pedido : elegidos) {
+            quitarPedido(pedido.getId());
+        }
+        for (Lote lote : carga.getSeleccion()) {
+            quitarLote(lote.getId());
+        }
+        return ResultadoReparto.despachado(vehiculo, elegidos, carga, recorrido);
+    }
+
+    /**
+     * Los pedidos más urgentes que entran en un reparto, en orden de prioridad. Se saltean los que
+     * agregarían una parada más de las que admite B1 y los que tienen como destino el propio
+     * depósito del vehículo, porque no son una parada del recorrido.
+     */
+    private Pedido[] pedidosDelReparto(Vehiculo vehiculo, int cantidadPedidos) {
+        List<Pedido> elegidos = new ArrayList<>();
+        for (Pedido pedido : pedidosPorPrioridad().getPedidos()) {
+            if (elegidos.size() == cantidadPedidos) {
+                break;
+            }
+            String destino = pedido.getCentroDestino();
+            if (destino.equals(vehiculo.getDeposito())) {
+                continue;
+            }
+            String[] centros = centrosDe(elegidos.toArray(new Pedido[0]));
+            if (!contieneCentro(centros, destino) && centros.length == RecorridoEntregas.MAXIMO_CENTROS) {
+                continue; // sería una parada más de las que admite B1
+            }
+            elegidos.add(pedido);
+        }
+        return elegidos.toArray(new Pedido[0]);
+    }
+
+    /** Destinos de los pedidos sin repetir, en el orden en que aparecen. */
+    private static String[] centrosDe(Pedido[] pedidosElegidos) {
+        List<String> centros = new ArrayList<>();
+        for (Pedido pedido : pedidosElegidos) {
+            if (!contieneCentro(centros.toArray(new String[0]), pedido.getCentroDestino())) {
+                centros.add(pedido.getCentroDestino());
+            }
+        }
+        return centros.toArray(new String[0]);
+    }
+
+    private static boolean contieneCentro(String[] centros, String centro) {
+        for (String c : centros) {
+            if (c.equals(centro)) return true;
+        }
+        return false;
     }
 
     // Consultas
